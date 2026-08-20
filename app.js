@@ -10,22 +10,51 @@ let cubePositionBuffer = null;
 let cubeIndexBuffer = null;
 let rayBuffer = null;
 
-// 箱の状態
-let BOX_CENTER = [0, 0, -1.5];
+
+// ==================================================
+// オブジェクト
+// ==================================================
+
 const BOX_HALF = 0.15;
 
-let boxColor = [0.2, 0.6, 1.0, 1.0];
-let rayHitBox = false;
+let boxes = [
+    {
+        center: [0, 0, -1.5],
+        color: [0.2, 0.6, 1.0, 1.0]
+    }
+];
 
-// ドラッグ状態
+
+// ==================================================
+// 「＋」ボタン
+// ==================================================
+
+const ADD_CENTER = [-0.55, 0.40, -1.2];
+const ADD_HALF = 0.16;
+
+const ADD_COLOR = [
+    0.2,
+    1.0,
+    0.3,
+    1.0
+];
+
+
+// ==================================================
+// 選択状態
+// ==================================================
+
+let hoverTarget = null;
+
 let isDragging = false;
 let activeInputSource = null;
+let activeBoxIndex = null;
 let dragDistance = 1.5;
 
 
-// ========================================
+// ==================================================
 // シェーダー
-// ========================================
+// ==================================================
 
 const vertexShaderSource = `
 attribute vec3 aPosition;
@@ -54,18 +83,31 @@ void main() {
 `;
 
 
-// ========================================
-// WebGL初期化
-// ========================================
+// ==================================================
+// WebGL
+// ==================================================
 
 function createShader(type, source) {
-    const shader = gl.createShader(type);
 
-    gl.shaderSource(shader, source);
+    const shader =
+        gl.createShader(type);
+
+    gl.shaderSource(
+        shader,
+        source
+    );
+
     gl.compileShader(shader);
 
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        throw new Error(gl.getShaderInfoLog(shader));
+    if (
+        !gl.getShaderParameter(
+            shader,
+            gl.COMPILE_STATUS
+        )
+    ) {
+        throw new Error(
+            gl.getShaderInfoLog(shader)
+        );
     }
 
     return shader;
@@ -73,6 +115,7 @@ function createShader(type, source) {
 
 
 function createProgram() {
+
     const vertexShader =
         createShader(
             gl.VERTEX_SHADER,
@@ -117,24 +160,26 @@ function createProgram() {
 }
 
 
-// ========================================
-// 3D形状
-// ========================================
+// ==================================================
+// 立方体データ
+// 単位立方体を作り、行列で大きさを変更
+// ==================================================
 
 function createGeometry() {
 
     const cubeVertices =
         new Float32Array([
 
-            -0.15, -0.15, -0.15,
-             0.15, -0.15, -0.15,
-             0.15,  0.15, -0.15,
-            -0.15,  0.15, -0.15,
+            -1, -1, -1,
+             1, -1, -1,
+             1,  1, -1,
+            -1,  1, -1,
 
-            -0.15, -0.15,  0.15,
-             0.15, -0.15,  0.15,
-             0.15,  0.15,  0.15,
-            -0.15,  0.15,  0.15
+            -1, -1,  1,
+             1, -1,  1,
+             1,  1,  1,
+            -1,  1,  1
+
         ]);
 
 
@@ -158,6 +203,7 @@ function createGeometry() {
 
             0, 3, 7,
             0, 7, 4
+
         ]);
 
 
@@ -196,9 +242,9 @@ function createGeometry() {
 }
 
 
-// ========================================
+// ==================================================
 // 行列
-// ========================================
+// ==================================================
 
 function identityMatrix() {
 
@@ -213,22 +259,31 @@ function identityMatrix() {
 }
 
 
-function translationMatrix(x, y, z) {
+function modelMatrix(
+    center,
+    scaleX,
+    scaleY,
+    scaleZ
+) {
 
-    const matrix =
-        identityMatrix();
+    return new Float32Array([
 
-    matrix[12] = x;
-    matrix[13] = y;
-    matrix[14] = z;
+        scaleX, 0, 0, 0,
+        0, scaleY, 0, 0,
+        0, 0, scaleZ, 0,
 
-    return matrix;
+        center[0],
+        center[1],
+        center[2],
+        1
+
+    ]);
 }
 
 
-// ========================================
-// ベクトル計算
-// ========================================
+// ==================================================
+// ベクトル
+// ==================================================
 
 function transformDirection(
     matrix,
@@ -283,29 +338,41 @@ function normalize(vector) {
 }
 
 
-// ========================================
+function dot(a, b) {
+
+    return (
+        a[0] * b[0] +
+        a[1] * b[1] +
+        a[2] * b[2]
+    );
+}
+
+
+// ==================================================
 // レイと箱の当たり判定
-// ========================================
+// ==================================================
 
 function rayBoxDistance(
     origin,
-    direction
+    direction,
+    center,
+    half
 ) {
 
     const min = [
 
-        BOX_CENTER[0] - BOX_HALF,
-        BOX_CENTER[1] - BOX_HALF,
-        BOX_CENTER[2] - BOX_HALF
+        center[0] - half,
+        center[1] - half,
+        center[2] - half
 
     ];
 
 
     const max = [
 
-        BOX_CENTER[0] + BOX_HALF,
-        BOX_CENTER[1] + BOX_HALF,
-        BOX_CENTER[2] + BOX_HALF
+        center[0] + half,
+        center[1] + half,
+        center[2] + half
 
     ];
 
@@ -325,7 +392,6 @@ function rayBoxDistance(
                 origin[i] < min[i] ||
                 origin[i] > max[i]
             ) {
-
                 return null;
             }
 
@@ -382,9 +448,90 @@ function rayBoxDistance(
 }
 
 
-// ========================================
-// XR入力レイ取得
-// ========================================
+// ==================================================
+// 一番手前の対象を探す
+// ==================================================
+
+function findNearestTarget(
+    origin,
+    direction
+) {
+
+    let result = null;
+
+
+    // ----------------------------
+    // 追加ボタン
+    // ----------------------------
+
+    const addDistance =
+        rayBoxDistance(
+            origin,
+            direction,
+            ADD_CENTER,
+            ADD_HALF
+        );
+
+
+    if (addDistance !== null) {
+
+        result = {
+
+            type: "add",
+            distance: addDistance
+
+        };
+    }
+
+
+    // ----------------------------
+    // 通常の箱
+    // ----------------------------
+
+    for (
+        let i = 0;
+        i < boxes.length;
+        i++
+    ) {
+
+        const distance =
+            rayBoxDistance(
+                origin,
+                direction,
+                boxes[i].center,
+                BOX_HALF
+            );
+
+
+        if (distance === null) {
+
+            continue;
+        }
+
+
+        if (
+            result === null ||
+            distance < result.distance
+        ) {
+
+            result = {
+
+                type: "box",
+                index: i,
+                distance: distance
+
+            };
+        }
+    }
+
+
+    return result;
+}
+
+
+// ==================================================
+// XR入力レイ
+// ==================================================
 
 function getRay(
     frame,
@@ -439,11 +586,18 @@ function getRay(
 }
 
 
-// ========================================
-// 箱描画
-// ========================================
+// ==================================================
+// 立方体描画
+// ==================================================
 
-function drawCube(view) {
+function drawCube(
+    view,
+    center,
+    scaleX,
+    scaleY,
+    scaleZ,
+    color
+) {
 
     gl.useProgram(program);
 
@@ -527,36 +681,18 @@ function drawCube(view) {
     gl.uniformMatrix4fv(
         modelLocation,
         false,
-        translationMatrix(
-            BOX_CENTER[0],
-            BOX_CENTER[1],
-            BOX_CENTER[2]
+        modelMatrix(
+            center,
+            scaleX,
+            scaleY,
+            scaleZ
         )
     );
 
 
-    let displayColor =
-        boxColor;
-
-
-    if (
-        rayHitBox &&
-        !isDragging
-    ) {
-
-        displayColor =
-            [
-                1.0,
-                1.0,
-                0.2,
-                1.0
-            ];
-    }
-
-
     gl.uniform4fv(
         colorLocation,
-        displayColor
+        color
     );
 
 
@@ -569,9 +705,123 @@ function drawCube(view) {
 }
 
 
-// ========================================
+// ==================================================
+// 通常オブジェクト描画
+// ==================================================
+
+function drawBoxes(view) {
+
+    for (
+        let i = 0;
+        i < boxes.length;
+        i++
+    ) {
+
+        let color =
+            boxes[i].color;
+
+
+        if (
+            isDragging &&
+            activeBoxIndex === i
+        ) {
+
+            color = [
+
+                0.2,
+                1.0,
+                0.3,
+                1.0
+
+            ];
+
+        } else if (
+            hoverTarget &&
+            hoverTarget.type === "box" &&
+            hoverTarget.index === i
+        ) {
+
+            color = [
+
+                1.0,
+                1.0,
+                0.2,
+                1.0
+
+            ];
+        }
+
+
+        drawCube(
+            view,
+            boxes[i].center,
+
+            BOX_HALF,
+            BOX_HALF,
+            BOX_HALF,
+
+            color
+        );
+    }
+}
+
+
+// ==================================================
+// 「＋」描画
+// ==================================================
+
+function drawAddButton(view) {
+
+    let color =
+        ADD_COLOR;
+
+
+    if (
+        hoverTarget &&
+        hoverTarget.type === "add"
+    ) {
+
+        color = [
+
+            1.0,
+            1.0,
+            0.2,
+            1.0
+
+        ];
+    }
+
+
+    // 横棒
+    drawCube(
+        view,
+        ADD_CENTER,
+
+        0.14,
+        0.04,
+        0.035,
+
+        color
+    );
+
+
+    // 縦棒
+    drawCube(
+        view,
+        ADD_CENTER,
+
+        0.04,
+        0.14,
+        0.035,
+
+        color
+    );
+}
+
+
+// ==================================================
 // レイ描画
-// ========================================
+// ==================================================
 
 function drawRay(
     view,
@@ -579,7 +829,8 @@ function drawRay(
     direction
 ) {
 
-    const rayLength = 2.5;
+    const rayLength =
+        2.5;
 
 
     const end = [
@@ -702,10 +953,10 @@ function drawRay(
 
     let rayColor = [
 
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
 
     ];
 
@@ -721,7 +972,7 @@ function drawRay(
 
         ];
 
-    } else if (rayHitBox) {
+    } else if (hoverTarget) {
 
         rayColor = [
 
@@ -748,9 +999,72 @@ function drawRay(
 }
 
 
-// ========================================
-// XRフレーム処理
-// ========================================
+// ==================================================
+// 新しい箱を追加
+// ==================================================
+
+function addNewBox() {
+
+    const slots = [
+
+        [0.45, 0.00, -1.5],
+        [-0.45, 0.00, -1.5],
+
+        [0.00, 0.40, -1.5],
+        [0.00, -0.40, -1.5],
+
+        [0.45, 0.40, -1.5],
+        [-0.45, 0.40, -1.5],
+
+        [0.45, -0.40, -1.5],
+        [-0.45, -0.40, -1.5]
+
+    ];
+
+
+    const index =
+        (boxes.length - 1) %
+        slots.length;
+
+
+    const layer =
+        Math.floor(
+            (boxes.length - 1) /
+            slots.length
+        );
+
+
+    const base =
+        slots[index];
+
+
+    boxes.push({
+
+        center: [
+
+            base[0],
+            base[1],
+            base[2] -
+            layer * 0.4
+
+        ],
+
+        color: [
+
+            0.2,
+            0.6,
+            1.0,
+            1.0
+
+        ]
+
+    });
+}
+
+
+// ==================================================
+// XRフレーム
+// ==================================================
 
 function onXRFrame(
     time,
@@ -778,16 +1092,18 @@ function onXRFrame(
     }
 
 
-    let currentRay = null;
+    let currentRay =
+        null;
 
 
-    // ----------------------------
-    // ドラッグ中
-    // ----------------------------
+    // ==================================================
+    // 掴んでいる場合
+    // ==================================================
 
     if (
         isDragging &&
-        activeInputSource
+        activeInputSource &&
+        activeBoxIndex !== null
     ) {
 
         const dragRay =
@@ -799,7 +1115,9 @@ function onXRFrame(
 
         if (dragRay) {
 
-            BOX_CENTER = [
+            boxes[
+                activeBoxIndex
+            ].center = [
 
                 dragRay.origin[0] +
                 dragRay.direction[0] *
@@ -818,17 +1136,21 @@ function onXRFrame(
 
             currentRay =
                 dragRay;
-
-
-            rayHitBox =
-                true;
         }
+
+
+        hoverTarget = {
+
+            type: "box",
+            index: activeBoxIndex
+
+        };
 
     } else {
 
-        // ----------------------------
+        // ==================================================
         // 通常状態
-        // ----------------------------
+        // ==================================================
 
         for (
             const inputSource
@@ -852,28 +1174,24 @@ function onXRFrame(
         }
 
 
-        rayHitBox =
-            false;
+        hoverTarget =
+            null;
 
 
         if (currentRay) {
 
-            const distance =
-                rayBoxDistance(
+            hoverTarget =
+                findNearestTarget(
                     currentRay.origin,
                     currentRay.direction
                 );
-
-
-            rayHitBox =
-                distance !== null;
         }
     }
 
 
-    // ----------------------------
+    // ==================================================
     // 描画
-    // ----------------------------
+    // ==================================================
 
     gl.bindFramebuffer(
         gl.FRAMEBUFFER,
@@ -916,7 +1234,9 @@ function onXRFrame(
         );
 
 
-        drawCube(view);
+        drawBoxes(view);
+
+        drawAddButton(view);
 
 
         if (currentRay) {
@@ -931,9 +1251,9 @@ function onXRFrame(
 }
 
 
-// ========================================
-// WebXR対応確認
-// ========================================
+// ==================================================
+// WebXR確認
+// ==================================================
 
 async function checkXR() {
 
@@ -1000,9 +1320,9 @@ async function checkXR() {
 }
 
 
-// ========================================
+// ==================================================
 // MR開始
-// ========================================
+// ==================================================
 
 xrButton.addEventListener(
     "click",
@@ -1074,9 +1394,9 @@ xrButton.addEventListener(
             );
 
 
-            // ========================================
-            // 掴み開始
-            // ========================================
+            // ==================================================
+            // 選択開始
+            // ==================================================
 
             xrSession.addEventListener(
                 "selectstart",
@@ -1095,57 +1415,98 @@ xrButton.addEventListener(
                     }
 
 
-                    const distance =
-                        rayBoxDistance(
+                    const target =
+                        findNearestTarget(
                             ray.origin,
                             ray.direction
                         );
 
 
-                    // 箱に当たっていなければ
-                    // 掴まない
-                    if (
-                        distance === null
-                    ) {
+                    if (!target) {
 
                         return;
                     }
 
 
-                    isDragging =
-                        true;
+                    // ==================================================
+                    // ＋ボタン
+                    // ==================================================
+
+                    if (
+                        target.type ===
+                        "add"
+                    ) {
+
+                        addNewBox();
+
+                        return;
+                    }
 
 
-                    activeInputSource =
-                        event.inputSource;
+                    // ==================================================
+                    // 通常の箱
+                    // ==================================================
+
+                    if (
+                        target.type ===
+                        "box"
+                    ) {
+
+                        activeBoxIndex =
+                            target.index;
 
 
-                    dragDistance =
-                        Math.max(
-                            0.3,
-                            Math.min(
-                                distance,
-                                3.0
-                            )
-                        );
+                        isDragging =
+                            true;
 
 
-                    // 掴んでいる間は緑
-                    boxColor = [
+                        activeInputSource =
+                            event.inputSource;
 
-                        0.2,
-                        1.0,
-                        0.3,
-                        1.0
 
-                    ];
+                        const boxCenter =
+                            boxes[
+                                activeBoxIndex
+                            ].center;
+
+
+                        const toCenter = [
+
+                            boxCenter[0] -
+                            ray.origin[0],
+
+                            boxCenter[1] -
+                            ray.origin[1],
+
+                            boxCenter[2] -
+                            ray.origin[2]
+
+                        ];
+
+
+                        dragDistance =
+                            dot(
+                                toCenter,
+                                ray.direction
+                            );
+
+
+                        dragDistance =
+                            Math.max(
+                                0.3,
+                                Math.min(
+                                    dragDistance,
+                                    3.0
+                                )
+                            );
+                    }
                 }
             );
 
 
-            // ========================================
-            // 掴み終了
-            // ========================================
+            // ==================================================
+            // 選択終了
+            // ==================================================
 
             xrSession.addEventListener(
                 "selectend",
@@ -1168,22 +1529,15 @@ xrButton.addEventListener(
                         null;
 
 
-                    // 離したら青
-                    boxColor = [
-
-                        0.2,
-                        0.6,
-                        1.0,
-                        1.0
-
-                    ];
+                    activeBoxIndex =
+                        null;
                 }
             );
 
 
-            // ========================================
+            // ==================================================
             // MR終了
-            // ========================================
+            // ==================================================
 
             xrSession.addEventListener(
                 "end",
@@ -1198,6 +1552,10 @@ xrButton.addEventListener(
 
 
                     activeInputSource =
+                        null;
+
+
+                    activeBoxIndex =
                         null;
 
 
@@ -1227,8 +1585,8 @@ xrButton.addEventListener(
 );
 
 
-// ========================================
+// ==================================================
 // 初期化
-// ========================================
+// ==================================================
 
 checkXR();
