@@ -10,39 +10,24 @@ let cubePositionBuffer = null;
 let cubeIndexBuffer = null;
 let rayBuffer = null;
 
-
-// ==================================================
-// オブジェクト
-// ==================================================
-
 const BOX_HALF = 0.15;
 
 let boxes = [
     {
         center: [0, 0, -1.5],
-        color: [0.2, 0.6, 1.0, 1.0]
+        color: [0.2, 0.6, 1.0, 1.0],
+        scale: 1.0,
+        rotationY: 0
     }
 ];
 
-
-// ==================================================
-// 「＋」ボタン
-// ==================================================
+let selectedBoxIndex = 0;
 
 const ADD_CENTER = [-0.55, 0.40, -1.2];
-const ADD_HALF = 0.16;
+const PLUS_CENTER = [0.00, 0.40, -1.2];
+const MINUS_CENTER = [0.55, 0.40, -1.2];
 
-const ADD_COLOR = [
-    0.2,
-    1.0,
-    0.3,
-    1.0
-];
-
-
-// ==================================================
-// 選択状態
-// ==================================================
+const BUTTON_HALF = 0.16;
 
 let hoverTarget = null;
 
@@ -50,6 +35,9 @@ let isDragging = false;
 let activeInputSource = null;
 let activeBoxIndex = null;
 let dragDistance = 1.5;
+
+let pressStartTime = 0;
+let pressStartCenter = null;
 
 
 // ==================================================
@@ -89,22 +77,13 @@ void main() {
 
 function createShader(type, source) {
 
-    const shader =
-        gl.createShader(type);
+    const shader = gl.createShader(type);
 
-    gl.shaderSource(
-        shader,
-        source
-    );
-
+    gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
-    if (
-        !gl.getShaderParameter(
-            shader,
-            gl.COMPILE_STATUS
-        )
-    ) {
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+
         throw new Error(
             gl.getShaderInfoLog(shader)
         );
@@ -149,6 +128,7 @@ function createProgram() {
             gl.LINK_STATUS
         )
     ) {
+
         throw new Error(
             gl.getProgramInfoLog(
                 shaderProgram
@@ -161,13 +141,12 @@ function createProgram() {
 
 
 // ==================================================
-// 立方体データ
-// 単位立方体を作り、行列で大きさを変更
+// 形状
 // ==================================================
 
 function createGeometry() {
 
-    const cubeVertices =
+    const vertices =
         new Float32Array([
 
             -1, -1, -1,
@@ -179,11 +158,9 @@ function createGeometry() {
              1, -1,  1,
              1,  1,  1,
             -1,  1,  1
-
         ]);
 
-
-    const cubeIndices =
+    const indices =
         new Uint16Array([
 
             0, 1, 2,
@@ -203,9 +180,7 @@ function createGeometry() {
 
             0, 3, 7,
             0, 7, 4
-
         ]);
-
 
     cubePositionBuffer =
         gl.createBuffer();
@@ -217,10 +192,9 @@ function createGeometry() {
 
     gl.bufferData(
         gl.ARRAY_BUFFER,
-        cubeVertices,
+        vertices,
         gl.STATIC_DRAW
     );
-
 
     cubeIndexBuffer =
         gl.createBuffer();
@@ -232,10 +206,9 @@ function createGeometry() {
 
     gl.bufferData(
         gl.ELEMENT_ARRAY_BUFFER,
-        cubeIndices,
+        indices,
         gl.STATIC_DRAW
     );
-
 
     rayBuffer =
         gl.createBuffer();
@@ -254,29 +227,56 @@ function identityMatrix() {
         0, 1, 0, 0,
         0, 0, 1, 0,
         0, 0, 0, 1
-
     ]);
 }
 
 
 function modelMatrix(
     center,
-    scaleX,
-    scaleY,
-    scaleZ
+    scale,
+    rotationY
+) {
+
+    const c =
+        Math.cos(rotationY);
+
+    const s =
+        Math.sin(rotationY);
+
+    const size =
+        BOX_HALF * scale;
+
+    return new Float32Array([
+
+         c * size, 0, -s * size, 0,
+         0,        size, 0,        0,
+         s * size, 0,  c * size,  0,
+
+         center[0],
+         center[1],
+         center[2],
+         1
+    ]);
+}
+
+
+function buttonMatrix(
+    center,
+    sx,
+    sy,
+    sz
 ) {
 
     return new Float32Array([
 
-        scaleX, 0, 0, 0,
-        0, scaleY, 0, 0,
-        0, 0, scaleZ, 0,
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, sz, 0,
 
         center[0],
         center[1],
         center[2],
         1
-
     ]);
 }
 
@@ -305,35 +305,29 @@ function transformDirection(
         matrix[2] * x +
         matrix[6] * y +
         matrix[10] * z
-
     ];
 }
 
 
-function normalize(vector) {
+function normalize(v) {
 
     const length =
         Math.hypot(
-            vector[0],
-            vector[1],
-            vector[2]
+            v[0],
+            v[1],
+            v[2]
         );
 
     if (length === 0) {
 
-        return [
-            0,
-            0,
-            -1
-        ];
+        return [0, 0, -1];
     }
 
     return [
 
-        vector[0] / length,
-        vector[1] / length,
-        vector[2] / length
-
+        v[0] / length,
+        v[1] / length,
+        v[2] / length
     ];
 }
 
@@ -349,7 +343,7 @@ function dot(a, b) {
 
 
 // ==================================================
-// レイと箱の当たり判定
+// 当たり判定
 // ==================================================
 
 function rayBoxDistance(
@@ -364,22 +358,17 @@ function rayBoxDistance(
         center[0] - half,
         center[1] - half,
         center[2] - half
-
     ];
-
 
     const max = [
 
         center[0] + half,
         center[1] + half,
         center[2] + half
-
     ];
-
 
     let tmin = -Infinity;
     let tmax = Infinity;
-
 
     for (let i = 0; i < 3; i++) {
 
@@ -392,6 +381,7 @@ function rayBoxDistance(
                 origin[i] < min[i] ||
                 origin[i] > max[i]
             ) {
+
                 return null;
             }
 
@@ -405,26 +395,17 @@ function rayBoxDistance(
                 (max[i] - origin[i]) /
                 direction[i];
 
-
             const near =
                 Math.min(t1, t2);
 
             const far =
                 Math.max(t1, t2);
 
-
             tmin =
-                Math.max(
-                    tmin,
-                    near
-                );
+                Math.max(tmin, near);
 
             tmax =
-                Math.min(
-                    tmax,
-                    far
-                );
-
+                Math.min(tmax, far);
 
             if (tmin > tmax) {
 
@@ -433,12 +414,10 @@ function rayBoxDistance(
         }
     }
 
-
     if (tmax < 0) {
 
         return null;
     }
-
 
     return (
         tmin >= 0
@@ -449,7 +428,7 @@ function rayBoxDistance(
 
 
 // ==================================================
-// 一番手前の対象を探す
+// 一番近い対象
 // ==================================================
 
 function findNearestTarget(
@@ -459,34 +438,52 @@ function findNearestTarget(
 
     let result = null;
 
+    const buttons = [
 
-    // ----------------------------
-    // 追加ボタン
-    // ----------------------------
-
-    const addDistance =
-        rayBoxDistance(
-            origin,
-            direction,
-            ADD_CENTER,
-            ADD_HALF
-        );
-
-
-    if (addDistance !== null) {
-
-        result = {
-
+        {
             type: "add",
-            distance: addDistance
+            center: ADD_CENTER
+        },
 
-        };
+        {
+            type: "scaleUp",
+            center: PLUS_CENTER
+        },
+
+        {
+            type: "scaleDown",
+            center: MINUS_CENTER
+        }
+    ];
+
+    for (
+        const button
+        of buttons
+    ) {
+
+        const distance =
+            rayBoxDistance(
+                origin,
+                direction,
+                button.center,
+                BUTTON_HALF
+            );
+
+        if (
+            distance !== null &&
+            (
+                result === null ||
+                distance < result.distance
+            )
+        ) {
+
+            result = {
+
+                type: button.type,
+                distance: distance
+            };
+        }
     }
-
-
-    // ----------------------------
-    // 通常の箱
-    // ----------------------------
 
     for (
         let i = 0;
@@ -494,24 +491,24 @@ function findNearestTarget(
         i++
     ) {
 
+        const half =
+            BOX_HALF *
+            boxes[i].scale;
+
         const distance =
             rayBoxDistance(
                 origin,
                 direction,
                 boxes[i].center,
-                BOX_HALF
+                half
             );
 
-
-        if (distance === null) {
-
-            continue;
-        }
-
-
         if (
-            result === null ||
-            distance < result.distance
+            distance !== null &&
+            (
+                result === null ||
+                distance < result.distance
+            )
         ) {
 
             result = {
@@ -519,18 +516,16 @@ function findNearestTarget(
                 type: "box",
                 index: i,
                 distance: distance
-
             };
         }
     }
-
 
     return result;
 }
 
 
 // ==================================================
-// XR入力レイ
+// XRレイ
 // ==================================================
 
 function getRay(
@@ -544,63 +539,50 @@ function getRay(
             xrRefSpace
         );
 
-
     if (!pose) {
 
         return null;
     }
 
-
     const matrix =
         pose.transform.matrix;
-
 
     const origin = [
 
         matrix[12],
         matrix[13],
         matrix[14]
-
     ];
-
 
     const direction =
         normalize(
-
             transformDirection(
                 matrix,
                 0,
                 0,
                 -1
             )
-
         );
-
 
     return {
 
         origin,
         direction
-
     };
 }
 
 
 // ==================================================
-// 立方体描画
+// 共通描画
 // ==================================================
 
-function drawCube(
+function drawShape(
     view,
-    center,
-    scaleX,
-    scaleY,
-    scaleZ,
+    matrix,
     color
 ) {
 
     gl.useProgram(program);
-
 
     const positionLocation =
         gl.getAttribLocation(
@@ -608,13 +590,11 @@ function drawCube(
             "aPosition"
         );
 
-
     const projectionLocation =
         gl.getUniformLocation(
             program,
             "uProjectionMatrix"
         );
-
 
     const viewLocation =
         gl.getUniformLocation(
@@ -622,13 +602,11 @@ function drawCube(
             "uViewMatrix"
         );
 
-
     const modelLocation =
         gl.getUniformLocation(
             program,
             "uModelMatrix"
         );
-
 
     const colorLocation =
         gl.getUniformLocation(
@@ -636,17 +614,14 @@ function drawCube(
             "uColor"
         );
 
-
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
         cubePositionBuffer
     );
 
-
     gl.enableVertexAttribArray(
         positionLocation
     );
-
 
     gl.vertexAttribPointer(
         positionLocation,
@@ -657,12 +632,10 @@ function drawCube(
         0
     );
 
-
     gl.bindBuffer(
         gl.ELEMENT_ARRAY_BUFFER,
         cubeIndexBuffer
     );
-
 
     gl.uniformMatrix4fv(
         projectionLocation,
@@ -670,31 +643,22 @@ function drawCube(
         view.projectionMatrix
     );
 
-
     gl.uniformMatrix4fv(
         viewLocation,
         false,
         view.transform.inverse.matrix
     );
 
-
     gl.uniformMatrix4fv(
         modelLocation,
         false,
-        modelMatrix(
-            center,
-            scaleX,
-            scaleY,
-            scaleZ
-        )
+        matrix
     );
-
 
     gl.uniform4fv(
         colorLocation,
         color
     );
-
 
     gl.drawElements(
         gl.TRIANGLES,
@@ -706,7 +670,7 @@ function drawCube(
 
 
 // ==================================================
-// 通常オブジェクト描画
+// 箱描画
 // ==================================================
 
 function drawBoxes(view) {
@@ -720,20 +684,13 @@ function drawBoxes(view) {
         let color =
             boxes[i].color;
 
-
         if (
             isDragging &&
             activeBoxIndex === i
         ) {
 
-            color = [
-
-                0.2,
-                1.0,
-                0.3,
-                1.0
-
-            ];
+            color =
+                [0.2, 1.0, 0.3, 1.0];
 
         } else if (
             hoverTarget &&
@@ -741,24 +698,25 @@ function drawBoxes(view) {
             hoverTarget.index === i
         ) {
 
-            color = [
+            color =
+                [1.0, 1.0, 0.2, 1.0];
 
-                1.0,
-                1.0,
-                0.2,
-                1.0
+        } else if (
+            selectedBoxIndex === i
+        ) {
 
-            ];
+            color =
+                [0.8, 0.4, 1.0, 1.0];
         }
 
-
-        drawCube(
+        drawShape(
             view,
-            boxes[i].center,
 
-            BOX_HALF,
-            BOX_HALF,
-            BOX_HALF,
+            modelMatrix(
+                boxes[i].center,
+                boxes[i].scale,
+                boxes[i].rotationY
+            ),
 
             color
         );
@@ -767,60 +725,109 @@ function drawBoxes(view) {
 
 
 // ==================================================
-// 「＋」描画
+// 操作用ボタン
 // ==================================================
 
-function drawAddButton(view) {
-
-    let color =
-        ADD_COLOR;
-
+function buttonColor(type) {
 
     if (
         hoverTarget &&
-        hoverTarget.type === "add"
+        hoverTarget.type === type
     ) {
 
-        color = [
-
+        return [
             1.0,
             1.0,
             0.2,
             1.0
-
         ];
     }
 
+    return [
+        0.2,
+        1.0,
+        0.3,
+        1.0
+    ];
+}
 
-    // 横棒
-    drawCube(
+
+function drawButtons(view) {
+
+    // 追加
+    drawShape(
         view,
-        ADD_CENTER,
 
-        0.14,
-        0.04,
-        0.035,
+        buttonMatrix(
+            ADD_CENTER,
+            0.14,
+            0.04,
+            0.035
+        ),
 
-        color
+        buttonColor("add")
+    );
+
+    drawShape(
+        view,
+
+        buttonMatrix(
+            ADD_CENTER,
+            0.04,
+            0.14,
+            0.035
+        ),
+
+        buttonColor("add")
     );
 
 
-    // 縦棒
-    drawCube(
+    // 拡大 +
+    drawShape(
         view,
-        ADD_CENTER,
 
-        0.04,
-        0.14,
-        0.035,
+        buttonMatrix(
+            PLUS_CENTER,
+            0.14,
+            0.04,
+            0.035
+        ),
 
-        color
+        buttonColor("scaleUp")
+    );
+
+    drawShape(
+        view,
+
+        buttonMatrix(
+            PLUS_CENTER,
+            0.04,
+            0.14,
+            0.035
+        ),
+
+        buttonColor("scaleUp")
+    );
+
+
+    // 縮小 -
+    drawShape(
+        view,
+
+        buttonMatrix(
+            MINUS_CENTER,
+            0.14,
+            0.04,
+            0.035
+        ),
+
+        buttonColor("scaleDown")
     );
 }
 
 
 // ==================================================
-// レイ描画
+// レイ
 // ==================================================
 
 function drawRay(
@@ -831,7 +838,6 @@ function drawRay(
 
     const rayLength =
         2.5;
-
 
     const end = [
 
@@ -846,9 +852,7 @@ function drawRay(
         origin[2] +
         direction[2] *
         rayLength
-
     ];
-
 
     const vertices =
         new Float32Array([
@@ -860,15 +864,12 @@ function drawRay(
             end[0],
             end[1],
             end[2]
-
         ]);
-
 
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
         rayBuffer
     );
-
 
     gl.bufferData(
         gl.ARRAY_BUFFER,
@@ -876,9 +877,7 @@ function drawRay(
         gl.DYNAMIC_DRAW
     );
 
-
     gl.useProgram(program);
-
 
     const positionLocation =
         gl.getAttribLocation(
@@ -886,13 +885,11 @@ function drawRay(
             "aPosition"
         );
 
-
     const projectionLocation =
         gl.getUniformLocation(
             program,
             "uProjectionMatrix"
         );
-
 
     const viewLocation =
         gl.getUniformLocation(
@@ -900,13 +897,11 @@ function drawRay(
             "uViewMatrix"
         );
 
-
     const modelLocation =
         gl.getUniformLocation(
             program,
             "uModelMatrix"
         );
-
 
     const colorLocation =
         gl.getUniformLocation(
@@ -914,11 +909,9 @@ function drawRay(
             "uColor"
         );
 
-
     gl.enableVertexAttribArray(
         positionLocation
     );
-
 
     gl.vertexAttribPointer(
         positionLocation,
@@ -929,13 +922,11 @@ function drawRay(
         0
     );
 
-
     gl.uniformMatrix4fv(
         projectionLocation,
         false,
         view.projectionMatrix
     );
-
 
     gl.uniformMatrix4fv(
         viewLocation,
@@ -943,53 +934,30 @@ function drawRay(
         view.transform.inverse.matrix
     );
 
-
     gl.uniformMatrix4fv(
         modelLocation,
         false,
         identityMatrix()
     );
 
-
-    let rayColor = [
-
-        1,
-        1,
-        1,
-        1
-
-    ];
-
+    let color =
+        [1, 1, 1, 1];
 
     if (isDragging) {
 
-        rayColor = [
-
-            0.2,
-            1.0,
-            0.3,
-            1.0
-
-        ];
+        color =
+            [0.2, 1.0, 0.3, 1.0];
 
     } else if (hoverTarget) {
 
-        rayColor = [
-
-            1.0,
-            1.0,
-            0.2,
-            1.0
-
-        ];
+        color =
+            [1.0, 1.0, 0.2, 1.0];
     }
-
 
     gl.uniform4fv(
         colorLocation,
-        rayColor
+        color
     );
-
 
     gl.drawArrays(
         gl.LINES,
@@ -1000,65 +968,36 @@ function drawRay(
 
 
 // ==================================================
-// 新しい箱を追加
+// 箱追加
 // ==================================================
 
 function addNewBox() {
 
-    const slots = [
-
-        [0.45, 0.00, -1.5],
-        [-0.45, 0.00, -1.5],
-
-        [0.00, 0.40, -1.5],
-        [0.00, -0.40, -1.5],
-
-        [0.45, 0.40, -1.5],
-        [-0.45, 0.40, -1.5],
-
-        [0.45, -0.40, -1.5],
-        [-0.45, -0.40, -1.5]
-
-    ];
-
-
-    const index =
-        (boxes.length - 1) %
-        slots.length;
-
-
-    const layer =
-        Math.floor(
-            (boxes.length - 1) /
-            slots.length
-        );
-
-
-    const base =
-        slots[index];
-
+    const offset =
+        boxes.length * 0.35;
 
     boxes.push({
 
         center: [
-
-            base[0],
-            base[1],
-            base[2] -
-            layer * 0.4
-
+            0.5,
+            0,
+            -1.5 - offset
         ],
 
         color: [
-
             0.2,
             0.6,
             1.0,
             1.0
+        ],
 
-        ]
+        scale: 1.0,
 
+        rotationY: 0
     });
+
+    selectedBoxIndex =
+        boxes.length - 1;
 }
 
 
@@ -1074,31 +1013,22 @@ function onXRFrame(
     const session =
         frame.session;
 
-
     session.requestAnimationFrame(
         onXRFrame
     );
-
 
     const viewerPose =
         frame.getViewerPose(
             xrRefSpace
         );
 
-
     if (!viewerPose) {
 
         return;
     }
 
-
     let currentRay =
         null;
-
-
-    // ==================================================
-    // 掴んでいる場合
-    // ==================================================
 
     if (
         isDragging &&
@@ -1106,51 +1036,36 @@ function onXRFrame(
         activeBoxIndex !== null
     ) {
 
-        const dragRay =
+        const ray =
             getRay(
                 frame,
                 activeInputSource
             );
 
-
-        if (dragRay) {
+        if (ray) {
 
             boxes[
                 activeBoxIndex
             ].center = [
 
-                dragRay.origin[0] +
-                dragRay.direction[0] *
+                ray.origin[0] +
+                ray.direction[0] *
                 dragDistance,
 
-                dragRay.origin[1] +
-                dragRay.direction[1] *
+                ray.origin[1] +
+                ray.direction[1] *
                 dragDistance,
 
-                dragRay.origin[2] +
-                dragRay.direction[2] *
+                ray.origin[2] +
+                ray.direction[2] *
                 dragDistance
-
             ];
 
-
             currentRay =
-                dragRay;
+                ray;
         }
 
-
-        hoverTarget = {
-
-            type: "box",
-            index: activeBoxIndex
-
-        };
-
     } else {
-
-        // ==================================================
-        // 通常状態
-        // ==================================================
 
         for (
             const inputSource
@@ -1163,7 +1078,6 @@ function onXRFrame(
                     inputSource
                 );
 
-
             if (ray) {
 
                 currentRay =
@@ -1173,10 +1087,8 @@ function onXRFrame(
             }
         }
 
-
         hoverTarget =
             null;
-
 
         if (currentRay) {
 
@@ -1188,18 +1100,12 @@ function onXRFrame(
         }
     }
 
-
-    // ==================================================
-    // 描画
-    // ==================================================
-
     gl.bindFramebuffer(
         gl.FRAMEBUFFER,
         session.renderState
             .baseLayer
             .framebuffer
     );
-
 
     gl.clearColor(
         0,
@@ -1208,12 +1114,10 @@ function onXRFrame(
         0
     );
 
-
     gl.clear(
         gl.COLOR_BUFFER_BIT |
         gl.DEPTH_BUFFER_BIT
     );
-
 
     for (
         const view
@@ -1225,7 +1129,6 @@ function onXRFrame(
                 .baseLayer
                 .getViewport(view);
 
-
         gl.viewport(
             viewport.x,
             viewport.y,
@@ -1233,11 +1136,8 @@ function onXRFrame(
             viewport.height
         );
 
-
         drawBoxes(view);
-
-        drawAddButton(view);
-
+        drawButtons(view);
 
         if (currentRay) {
 
@@ -1265,12 +1165,10 @@ async function checkXR() {
         return;
     }
 
-
     if (!navigator.xr) {
 
         xrButton.textContent =
             "WebXR非対応";
-
 
         status.textContent =
             "このブラウザではWebXRを利用できません。";
@@ -1278,44 +1176,30 @@ async function checkXR() {
         return;
     }
 
+    const supported =
+        await navigator.xr
+            .isSessionSupported(
+                "immersive-ar"
+            );
 
-    try {
+    if (supported) {
 
-        const supported =
-            await navigator.xr
-                .isSessionSupported(
-                    "immersive-ar"
-                );
+        xrButton.disabled =
+            false;
 
-
-        if (supported) {
-
-            xrButton.disabled =
-                false;
-
-
-            xrButton.textContent =
-                "MR体験を開始";
-
-
-            status.textContent =
-                "Immersive AR対応";
-
-        } else {
-
-            xrButton.textContent =
-                "AR非対応";
-
-
-            status.textContent =
-                "immersive-arを利用できません。";
-        }
-
-    } catch (error) {
+        xrButton.textContent =
+            "MR体験を開始";
 
         status.textContent =
-            "WebXR確認エラー: " +
-            error.message;
+            "Immersive AR対応";
+
+    } else {
+
+        xrButton.textContent =
+            "AR非対応";
+
+        status.textContent =
+            "immersive-arを利用できません。";
     }
 }
 
@@ -1335,7 +1219,6 @@ xrButton.addEventListener(
             return;
         }
 
-
         try {
 
             xrSession =
@@ -1344,12 +1227,10 @@ xrButton.addEventListener(
                         "immersive-ar"
                     );
 
-
             const canvas =
                 document.createElement(
                     "canvas"
                 );
-
 
             gl =
                 canvas.getContext(
@@ -1360,9 +1241,7 @@ xrButton.addEventListener(
                     }
                 );
 
-
             await gl.makeXRCompatible();
-
 
             xrSession.updateRenderState({
 
@@ -1371,9 +1250,7 @@ xrButton.addEventListener(
                         xrSession,
                         gl
                     )
-
             });
-
 
             xrRefSpace =
                 await xrSession
@@ -1381,22 +1258,19 @@ xrButton.addEventListener(
                         "local"
                     );
 
-
             program =
                 createProgram();
 
-
             createGeometry();
-
 
             gl.enable(
                 gl.DEPTH_TEST
             );
 
 
-            // ==================================================
+            // ==========================================
             // 選択開始
-            // ==================================================
+            // ==========================================
 
             xrSession.addEventListener(
                 "selectstart",
@@ -1408,12 +1282,10 @@ xrButton.addEventListener(
                             event.inputSource
                         );
 
-
                     if (!ray) {
 
                         return;
                     }
-
 
                     const target =
                         findNearestTarget(
@@ -1421,17 +1293,13 @@ xrButton.addEventListener(
                             ray.direction
                         );
 
-
                     if (!target) {
 
                         return;
                     }
 
 
-                    // ==================================================
-                    // ＋ボタン
-                    // ==================================================
-
+                    // 箱追加
                     if (
                         target.type ===
                         "add"
@@ -1443,70 +1311,128 @@ xrButton.addEventListener(
                     }
 
 
-                    // ==================================================
-                    // 通常の箱
-                    // ==================================================
+                    // 拡大
+                    if (
+                        target.type ===
+                        "scaleUp"
+                    ) {
 
+                        if (
+                            boxes[
+                                selectedBoxIndex
+                            ]
+                        ) {
+
+                            boxes[
+                                selectedBoxIndex
+                            ].scale =
+                                Math.min(
+                                    2.5,
+                                    boxes[
+                                        selectedBoxIndex
+                                    ].scale +
+                                    0.2
+                                );
+                        }
+
+                        return;
+                    }
+
+
+                    // 縮小
+                    if (
+                        target.type ===
+                        "scaleDown"
+                    ) {
+
+                        if (
+                            boxes[
+                                selectedBoxIndex
+                            ]
+                        ) {
+
+                            boxes[
+                                selectedBoxIndex
+                            ].scale =
+                                Math.max(
+                                    0.4,
+                                    boxes[
+                                        selectedBoxIndex
+                                    ].scale -
+                                    0.2
+                                );
+                        }
+
+                        return;
+                    }
+
+
+                    // 箱
                     if (
                         target.type ===
                         "box"
                     ) {
 
-                        activeBoxIndex =
+                        selectedBoxIndex =
                             target.index;
 
-
-                        isDragging =
-                            true;
-
+                        activeBoxIndex =
+                            target.index;
 
                         activeInputSource =
                             event.inputSource;
 
+                        pressStartTime =
+                            performance.now();
 
-                        const boxCenter =
+                        pressStartCenter =
+                            [
+                                ...boxes[
+                                    target.index
+                                ].center
+                            ];
+
+                        const center =
                             boxes[
-                                activeBoxIndex
+                                target.index
                             ].center;
-
 
                         const toCenter = [
 
-                            boxCenter[0] -
+                            center[0] -
                             ray.origin[0],
 
-                            boxCenter[1] -
+                            center[1] -
                             ray.origin[1],
 
-                            boxCenter[2] -
+                            center[2] -
                             ray.origin[2]
-
                         ];
-
-
-                        dragDistance =
-                            dot(
-                                toCenter,
-                                ray.direction
-                            );
-
 
                         dragDistance =
                             Math.max(
                                 0.3,
+
                                 Math.min(
-                                    dragDistance,
+                                    dot(
+                                        toCenter,
+                                        ray.direction
+                                    ),
+
                                     3.0
                                 )
                             );
+
+                        isDragging =
+                            true;
                     }
                 }
             );
 
 
-            // ==================================================
+            // ==========================================
             // 選択終了
-            // ==================================================
+            // ==========================================
 
             xrSession.addEventListener(
                 "selectend",
@@ -1520,24 +1446,66 @@ xrButton.addEventListener(
                         return;
                     }
 
+                    const duration =
+                        performance.now() -
+                        pressStartTime;
+
+                    const box =
+                        boxes[
+                            activeBoxIndex
+                        ];
+
+                    if (
+                        box &&
+                        duration < 350 &&
+                        pressStartCenter
+                    ) {
+
+                        const dx =
+                            box.center[0] -
+                            pressStartCenter[0];
+
+                        const dy =
+                            box.center[1] -
+                            pressStartCenter[1];
+
+                        const dz =
+                            box.center[2] -
+                            pressStartCenter[2];
+
+                        const moved =
+                            Math.hypot(
+                                dx,
+                                dy,
+                                dz
+                            );
+
+                        if (moved < 0.08) {
+
+                            box.center =
+                                [
+                                    ...pressStartCenter
+                                ];
+
+                            box.rotationY +=
+                                Math.PI / 4;
+                        }
+                    }
 
                     isDragging =
                         false;
 
-
                     activeInputSource =
                         null;
 
-
                     activeBoxIndex =
+                        null;
+
+                    pressStartCenter =
                         null;
                 }
             );
 
-
-            // ==================================================
-            // MR終了
-            // ==================================================
 
             xrSession.addEventListener(
                 "end",
@@ -1546,34 +1514,27 @@ xrButton.addEventListener(
                     xrSession =
                         null;
 
-
                     isDragging =
                         false;
-
 
                     activeInputSource =
                         null;
 
-
                     activeBoxIndex =
                         null;
-
 
                     xrButton.textContent =
                         "MR体験を開始";
                 }
             );
 
-
             xrButton.textContent =
                 "MR体験を終了";
-
 
             xrSession
                 .requestAnimationFrame(
                     onXRFrame
                 );
-
 
         } catch (error) {
 
@@ -1584,9 +1545,5 @@ xrButton.addEventListener(
     }
 );
 
-
-// ==================================================
-// 初期化
-// ==================================================
 
 checkXR();
