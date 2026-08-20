@@ -237,11 +237,8 @@ function modelMatrix(
     rotationY
 ) {
 
-    const c =
-        Math.cos(rotationY);
-
-    const s =
-        Math.sin(rotationY);
+    const c = Math.cos(rotationY);
+    const s = Math.sin(rotationY);
 
     const size =
         BOX_HALF * scale;
@@ -456,10 +453,7 @@ function findNearestTarget(
         }
     ];
 
-    for (
-        const button
-        of buttons
-    ) {
+    for (const button of buttons) {
 
         const distance =
             rayBoxDistance(
@@ -725,7 +719,7 @@ function drawBoxes(view) {
 
 
 // ==================================================
-// 操作用ボタン
+// ボタン色
 // ==================================================
 
 function buttonColor(type) {
@@ -752,37 +746,70 @@ function buttonColor(type) {
 }
 
 
+// ==================================================
+// 操作用ボタン描画
+// ==================================================
+
 function drawButtons(view) {
 
-    // 追加
+    const addColor =
+        buttonColor("add");
+
+    const scaleUpColor =
+        buttonColor("scaleUp");
+
+    const scaleDownColor =
+        buttonColor("scaleDown");
+
+
+    // ----------------------------------------
+    // 個数追加
+    // 小さい箱を2個ずらして表示
+    // ----------------------------------------
+
+    const addBox1 = [
+        ADD_CENTER[0] - 0.055,
+        ADD_CENTER[1] - 0.035,
+        ADD_CENTER[2]
+    ];
+
+    const addBox2 = [
+        ADD_CENTER[0] + 0.055,
+        ADD_CENTER[1] + 0.035,
+        ADD_CENTER[2] - 0.025
+    ];
+
     drawShape(
         view,
 
         buttonMatrix(
-            ADD_CENTER,
-            0.14,
-            0.04,
-            0.035
+            addBox1,
+            0.075,
+            0.075,
+            0.055
         ),
 
-        buttonColor("add")
+        addColor
     );
 
     drawShape(
         view,
 
         buttonMatrix(
-            ADD_CENTER,
-            0.04,
-            0.14,
-            0.035
+            addBox2,
+            0.075,
+            0.075,
+            0.055
         ),
 
-        buttonColor("add")
+        addColor
     );
 
 
+    // ----------------------------------------
     // 拡大 +
+    // ----------------------------------------
+
     drawShape(
         view,
 
@@ -793,7 +820,7 @@ function drawButtons(view) {
             0.035
         ),
 
-        buttonColor("scaleUp")
+        scaleUpColor
     );
 
     drawShape(
@@ -806,11 +833,14 @@ function drawButtons(view) {
             0.035
         ),
 
-        buttonColor("scaleUp")
+        scaleUpColor
     );
 
 
+    // ----------------------------------------
     // 縮小 -
+    // ----------------------------------------
+
     drawShape(
         view,
 
@@ -821,7 +851,7 @@ function drawButtons(view) {
             0.035
         ),
 
-        buttonColor("scaleDown")
+        scaleDownColor
     );
 }
 
@@ -1268,10 +1298,6 @@ xrButton.addEventListener(
             );
 
 
-            // ==========================================
-            // 選択開始
-            // ==========================================
-
             xrSession.addEventListener(
                 "selectstart",
                 (event) => {
@@ -1299,7 +1325,6 @@ xrButton.addEventListener(
                     }
 
 
-                    // 箱追加
                     if (
                         target.type ===
                         "add"
@@ -1311,7 +1336,6 @@ xrButton.addEventListener(
                     }
 
 
-                    // 拡大
                     if (
                         target.type ===
                         "scaleUp"
@@ -1339,7 +1363,6 @@ xrButton.addEventListener(
                     }
 
 
-                    // 縮小
                     if (
                         target.type ===
                         "scaleDown"
@@ -1367,7 +1390,6 @@ xrButton.addEventListener(
                     }
 
 
-                    // 箱
                     if (
                         target.type ===
                         "box"
@@ -1429,10 +1451,6 @@ xrButton.addEventListener(
                 }
             );
 
-
-            // ==========================================
-            // 選択終了
-            // ==========================================
 
             xrSession.addEventListener(
                 "selectend",
