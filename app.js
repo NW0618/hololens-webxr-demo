@@ -12,10 +12,42 @@ let rayBuffer = null;
 
 const BOX_HALF = 0.15;
 
+// ==================================================
+// 色
+// ==================================================
+
+const COLORS = {
+    red:    [1.0, 0.2, 0.2, 1.0],
+    blue:   [0.2, 0.6, 1.0, 1.0],
+    green:  [0.2, 1.0, 0.3, 1.0],
+    yellow: [1.0, 1.0, 0.2, 1.0],
+    purple: [0.8, 0.4, 1.0, 1.0],
+    white:  [1.0, 1.0, 1.0, 1.0]
+};
+
+// ==================================================
+// 3個のオブジェクト
+// ==================================================
+
 let boxes = [
     {
+        center: [-0.45, 0, -1.5],
+        colorName: "red",
+        color: COLORS.red,
+        scale: 1.0,
+        rotationY: 0
+    },
+    {
         center: [0, 0, -1.5],
-        color: [0.2, 0.6, 1.0, 1.0],
+        colorName: "blue",
+        color: COLORS.blue,
+        scale: 1.0,
+        rotationY: 0
+    },
+    {
+        center: [0.45, 0, -1.5],
+        colorName: "green",
+        color: COLORS.green,
         scale: 1.0,
         rotationY: 0
     }
@@ -23,11 +55,28 @@ let boxes = [
 
 let selectedBoxIndex = 0;
 
-const ADD_CENTER = [-0.55, 0.40, -1.2];
-const PLUS_CENTER = [0.00, 0.40, -1.2];
-const MINUS_CENTER = [0.55, 0.40, -1.2];
+// ==================================================
+// ゴール
+// ==================================================
+
+const GOAL_CENTER = [0, -0.45, -1.5];
+const GOAL_HALF = 0.28;
+
+let gameCleared = false;
+
+// ==================================================
+// 操作ボタン
+// ==================================================
+
+const ADD_CENTER = [-0.55, 0.45, -1.2];
+const PLUS_CENTER = [0.00, 0.45, -1.2];
+const MINUS_CENTER = [0.55, 0.45, -1.2];
 
 const BUTTON_HALF = 0.16;
+
+// ==================================================
+// 操作状態
+// ==================================================
 
 let hoverTarget = null;
 
@@ -38,7 +87,6 @@ let dragDistance = 1.5;
 
 let pressStartTime = 0;
 let pressStartCenter = null;
-
 
 // ==================================================
 // シェーダー
@@ -70,31 +118,24 @@ void main() {
 }
 `;
 
-
 // ==================================================
 // WebGL
 // ==================================================
 
 function createShader(type, source) {
-
     const shader = gl.createShader(type);
 
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-
-        throw new Error(
-            gl.getShaderInfoLog(shader)
-        );
+        throw new Error(gl.getShaderInfoLog(shader));
     }
 
     return shader;
 }
 
-
 function createProgram() {
-
     const vertexShader =
         createShader(
             gl.VERTEX_SHADER,
@@ -128,7 +169,6 @@ function createProgram() {
             gl.LINK_STATUS
         )
     ) {
-
         throw new Error(
             gl.getProgramInfoLog(
                 shaderProgram
@@ -139,16 +179,13 @@ function createProgram() {
     return shaderProgram;
 }
 
-
 // ==================================================
 // 形状
 // ==================================================
 
 function createGeometry() {
-
     const vertices =
         new Float32Array([
-
             -1, -1, -1,
              1, -1, -1,
              1,  1, -1,
@@ -162,7 +199,6 @@ function createGeometry() {
 
     const indices =
         new Uint16Array([
-
             0, 1, 2,
             0, 2, 3,
 
@@ -214,15 +250,12 @@ function createGeometry() {
         gl.createBuffer();
 }
 
-
 // ==================================================
 // 行列
 // ==================================================
 
 function identityMatrix() {
-
     return new Float32Array([
-
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
@@ -230,21 +263,21 @@ function identityMatrix() {
     ]);
 }
 
-
 function modelMatrix(
     center,
     scale,
     rotationY
 ) {
+    const c =
+        Math.cos(rotationY);
 
-    const c = Math.cos(rotationY);
-    const s = Math.sin(rotationY);
+    const s =
+        Math.sin(rotationY);
 
     const size =
         BOX_HALF * scale;
 
     return new Float32Array([
-
          c * size, 0, -s * size, 0,
          0,        size, 0,        0,
          s * size, 0,  c * size,  0,
@@ -256,16 +289,13 @@ function modelMatrix(
     ]);
 }
 
-
-function buttonMatrix(
+function simpleMatrix(
     center,
     sx,
     sy,
     sz
 ) {
-
     return new Float32Array([
-
         sx, 0, 0, 0,
         0, sy, 0, 0,
         0, 0, sz, 0,
@@ -277,7 +307,6 @@ function buttonMatrix(
     ]);
 }
 
-
 // ==================================================
 // ベクトル
 // ==================================================
@@ -288,9 +317,7 @@ function transformDirection(
     y,
     z
 ) {
-
     return [
-
         matrix[0] * x +
         matrix[4] * y +
         matrix[8] * z,
@@ -305,9 +332,7 @@ function transformDirection(
     ];
 }
 
-
 function normalize(v) {
-
     const length =
         Math.hypot(
             v[0],
@@ -316,28 +341,23 @@ function normalize(v) {
         );
 
     if (length === 0) {
-
         return [0, 0, -1];
     }
 
     return [
-
         v[0] / length,
         v[1] / length,
         v[2] / length
     ];
 }
 
-
 function dot(a, b) {
-
     return (
         a[0] * b[0] +
         a[1] * b[1] +
         a[2] * b[2]
     );
 }
-
 
 // ==================================================
 // 当たり判定
@@ -349,16 +369,13 @@ function rayBoxDistance(
     center,
     half
 ) {
-
     const min = [
-
         center[0] - half,
         center[1] - half,
         center[2] - half
     ];
 
     const max = [
-
         center[0] + half,
         center[1] + half,
         center[2] + half
@@ -368,22 +385,17 @@ function rayBoxDistance(
     let tmax = Infinity;
 
     for (let i = 0; i < 3; i++) {
-
         if (
             Math.abs(direction[i]) <
             0.000001
         ) {
-
             if (
                 origin[i] < min[i] ||
                 origin[i] > max[i]
             ) {
-
                 return null;
             }
-
         } else {
-
             const t1 =
                 (min[i] - origin[i]) /
                 direction[i];
@@ -405,14 +417,12 @@ function rayBoxDistance(
                 Math.min(tmax, far);
 
             if (tmin > tmax) {
-
                 return null;
             }
         }
     }
 
     if (tmax < 0) {
-
         return null;
     }
 
@@ -423,7 +433,6 @@ function rayBoxDistance(
     );
 }
 
-
 // ==================================================
 // 一番近い対象
 // ==================================================
@@ -432,29 +441,27 @@ function findNearestTarget(
     origin,
     direction
 ) {
-
     let result = null;
 
     const buttons = [
-
         {
             type: "add",
             center: ADD_CENTER
         },
-
         {
             type: "scaleUp",
             center: PLUS_CENTER
         },
-
         {
             type: "scaleDown",
             center: MINUS_CENTER
         }
     ];
 
-    for (const button of buttons) {
-
+    for (
+        const button
+        of buttons
+    ) {
         const distance =
             rayBoxDistance(
                 origin,
@@ -467,12 +474,11 @@ function findNearestTarget(
             distance !== null &&
             (
                 result === null ||
-                distance < result.distance
+                distance <
+                result.distance
             )
         ) {
-
             result = {
-
                 type: button.type,
                 distance: distance
             };
@@ -484,7 +490,6 @@ function findNearestTarget(
         i < boxes.length;
         i++
     ) {
-
         const half =
             BOX_HALF *
             boxes[i].scale;
@@ -501,12 +506,11 @@ function findNearestTarget(
             distance !== null &&
             (
                 result === null ||
-                distance < result.distance
+                distance <
+                result.distance
             )
         ) {
-
             result = {
-
                 type: "box",
                 index: i,
                 distance: distance
@@ -517,7 +521,6 @@ function findNearestTarget(
     return result;
 }
 
-
 // ==================================================
 // XRレイ
 // ==================================================
@@ -526,7 +529,6 @@ function getRay(
     frame,
     inputSource
 ) {
-
     const pose =
         frame.getPose(
             inputSource.targetRaySpace,
@@ -534,7 +536,6 @@ function getRay(
         );
 
     if (!pose) {
-
         return null;
     }
 
@@ -542,7 +543,6 @@ function getRay(
         pose.transform.matrix;
 
     const origin = [
-
         matrix[12],
         matrix[13],
         matrix[14]
@@ -559,12 +559,10 @@ function getRay(
         );
 
     return {
-
         origin,
         direction
     };
 }
-
 
 // ==================================================
 // 共通描画
@@ -575,7 +573,6 @@ function drawShape(
     matrix,
     color
 ) {
-
     gl.useProgram(program);
 
     const positionLocation =
@@ -662,19 +659,16 @@ function drawShape(
     );
 }
 
-
 // ==================================================
-// 箱描画
+// オブジェクト描画
 // ==================================================
 
 function drawBoxes(view) {
-
     for (
         let i = 0;
         i < boxes.length;
         i++
     ) {
-
         let color =
             boxes[i].color;
 
@@ -682,25 +676,20 @@ function drawBoxes(view) {
             isDragging &&
             activeBoxIndex === i
         ) {
-
             color =
-                [0.2, 1.0, 0.3, 1.0];
-
+                COLORS.green;
         } else if (
             hoverTarget &&
             hoverTarget.type === "box" &&
             hoverTarget.index === i
         ) {
-
             color =
-                [1.0, 1.0, 0.2, 1.0];
-
+                COLORS.yellow;
         } else if (
             selectedBoxIndex === i
         ) {
-
             color =
-                [0.8, 0.4, 1.0, 1.0];
+                COLORS.purple;
         }
 
         drawShape(
@@ -717,41 +706,96 @@ function drawBoxes(view) {
     }
 }
 
+// ==================================================
+// ゴール描画
+// ==================================================
+
+function drawGoal(view) {
+    const color =
+        gameCleared
+            ? COLORS.green
+            : COLORS.red;
+
+    const x =
+        GOAL_CENTER[0];
+
+    const y =
+        GOAL_CENTER[1];
+
+    const z =
+        GOAL_CENTER[2];
+
+    const h =
+        GOAL_HALF;
+
+    const thickness =
+        0.025;
+
+    // 上
+    drawShape(
+        view,
+        simpleMatrix(
+            [x, y + h, z],
+            h,
+            thickness,
+            thickness
+        ),
+        color
+    );
+
+    // 下
+    drawShape(
+        view,
+        simpleMatrix(
+            [x, y - h, z],
+            h,
+            thickness,
+            thickness
+        ),
+        color
+    );
+
+    // 左
+    drawShape(
+        view,
+        simpleMatrix(
+            [x - h, y, z],
+            thickness,
+            h,
+            thickness
+        ),
+        color
+    );
+
+    // 右
+    drawShape(
+        view,
+        simpleMatrix(
+            [x + h, y, z],
+            thickness,
+            h,
+            thickness
+        ),
+        color
+    );
+}
 
 // ==================================================
-// ボタン色
+// ボタン
 // ==================================================
 
 function buttonColor(type) {
-
     if (
         hoverTarget &&
         hoverTarget.type === type
     ) {
-
-        return [
-            1.0,
-            1.0,
-            0.2,
-            1.0
-        ];
+        return COLORS.yellow;
     }
 
-    return [
-        0.2,
-        1.0,
-        0.3,
-        1.0
-    ];
+    return COLORS.green;
 }
 
-
-// ==================================================
-// 操作用ボタン描画
-// ==================================================
-
 function drawButtons(view) {
-
     const addColor =
         buttonColor("add");
 
@@ -761,103 +805,75 @@ function drawButtons(view) {
     const scaleDownColor =
         buttonColor("scaleDown");
 
-
-    // ----------------------------------------
     // 個数追加
-    // 小さい箱を2個ずらして表示
-    // ----------------------------------------
-
-    const addBox1 = [
-        ADD_CENTER[0] - 0.055,
-        ADD_CENTER[1] - 0.035,
-        ADD_CENTER[2]
-    ];
-
-    const addBox2 = [
-        ADD_CENTER[0] + 0.055,
-        ADD_CENTER[1] + 0.035,
-        ADD_CENTER[2] - 0.025
-    ];
-
     drawShape(
         view,
-
-        buttonMatrix(
-            addBox1,
+        simpleMatrix(
+            [
+                ADD_CENTER[0] - 0.055,
+                ADD_CENTER[1] - 0.035,
+                ADD_CENTER[2]
+            ],
             0.075,
             0.075,
             0.055
         ),
-
         addColor
     );
 
     drawShape(
         view,
-
-        buttonMatrix(
-            addBox2,
+        simpleMatrix(
+            [
+                ADD_CENTER[0] + 0.055,
+                ADD_CENTER[1] + 0.035,
+                ADD_CENTER[2] - 0.025
+            ],
             0.075,
             0.075,
             0.055
         ),
-
         addColor
     );
 
-
-    // ----------------------------------------
     // 拡大 +
-    // ----------------------------------------
-
     drawShape(
         view,
-
-        buttonMatrix(
+        simpleMatrix(
             PLUS_CENTER,
             0.14,
             0.04,
             0.035
         ),
-
         scaleUpColor
     );
 
     drawShape(
         view,
-
-        buttonMatrix(
+        simpleMatrix(
             PLUS_CENTER,
             0.04,
             0.14,
             0.035
         ),
-
         scaleUpColor
     );
 
-
-    // ----------------------------------------
     // 縮小 -
-    // ----------------------------------------
-
     drawShape(
         view,
-
-        buttonMatrix(
+        simpleMatrix(
             MINUS_CENTER,
             0.14,
             0.04,
             0.035
         ),
-
         scaleDownColor
     );
 }
 
-
 // ==================================================
-// レイ
+// レイ描画
 // ==================================================
 
 function drawRay(
@@ -865,12 +881,10 @@ function drawRay(
     origin,
     direction
 ) {
-
     const rayLength =
         2.5;
 
     const end = [
-
         origin[0] +
         direction[0] *
         rayLength,
@@ -886,7 +900,6 @@ function drawRay(
 
     const vertices =
         new Float32Array([
-
             origin[0],
             origin[1],
             origin[2],
@@ -971,17 +984,14 @@ function drawRay(
     );
 
     let color =
-        [1, 1, 1, 1];
+        COLORS.white;
 
     if (isDragging) {
-
         color =
-            [0.2, 1.0, 0.3, 1.0];
-
+            COLORS.green;
     } else if (hoverTarget) {
-
         color =
-            [1.0, 1.0, 0.2, 1.0];
+            COLORS.yellow;
     }
 
     gl.uniform4fv(
@@ -996,30 +1006,25 @@ function drawRay(
     );
 }
 
-
 // ==================================================
-// 箱追加
+// 新しい箱追加
 // ==================================================
 
 function addNewBox() {
-
     const offset =
         boxes.length * 0.35;
 
     boxes.push({
-
         center: [
-            0.5,
+            0.6,
             0,
             -1.5 - offset
         ],
 
-        color: [
-            0.2,
-            0.6,
-            1.0,
-            1.0
-        ],
+        colorName: "blue",
+
+        color:
+            COLORS.blue,
 
         scale: 1.0,
 
@@ -1030,6 +1035,66 @@ function addNewBox() {
         boxes.length - 1;
 }
 
+// ==================================================
+// ゴール判定
+// ==================================================
+
+function checkGoal() {
+    gameCleared =
+        false;
+
+    for (
+        const box
+        of boxes
+    ) {
+        if (
+            box.colorName !== "red"
+        ) {
+            continue;
+        }
+
+        const dx =
+            Math.abs(
+                box.center[0] -
+                GOAL_CENTER[0]
+            );
+
+        const dy =
+            Math.abs(
+                box.center[1] -
+                GOAL_CENTER[1]
+            );
+
+        const dz =
+            Math.abs(
+                box.center[2] -
+                GOAL_CENTER[2]
+            );
+
+        const allowed =
+            GOAL_HALF -
+            BOX_HALF *
+            box.scale;
+
+        if (
+            allowed > 0 &&
+            dx <= allowed &&
+            dy <= allowed &&
+            dz <= 0.25
+        ) {
+            gameCleared =
+                true;
+
+            status.textContent =
+                "正解！ 赤い箱をゴールに置けました。";
+
+            return;
+        }
+    }
+
+    status.textContent =
+        "赤い箱を赤い枠の中へ移動してください。";
+}
 
 // ==================================================
 // XRフレーム
@@ -1039,7 +1104,6 @@ function onXRFrame(
     time,
     frame
 ) {
-
     const session =
         frame.session;
 
@@ -1053,7 +1117,6 @@ function onXRFrame(
         );
 
     if (!viewerPose) {
-
         return;
     }
 
@@ -1065,7 +1128,6 @@ function onXRFrame(
         activeInputSource &&
         activeBoxIndex !== null
     ) {
-
         const ray =
             getRay(
                 frame,
@@ -1073,11 +1135,9 @@ function onXRFrame(
             );
 
         if (ray) {
-
             boxes[
                 activeBoxIndex
             ].center = [
-
                 ray.origin[0] +
                 ray.direction[0] *
                 dragDistance,
@@ -1094,14 +1154,11 @@ function onXRFrame(
             currentRay =
                 ray;
         }
-
     } else {
-
         for (
             const inputSource
             of session.inputSources
         ) {
-
             const ray =
                 getRay(
                     frame,
@@ -1109,7 +1166,6 @@ function onXRFrame(
                 );
 
             if (ray) {
-
                 currentRay =
                     ray;
 
@@ -1121,7 +1177,6 @@ function onXRFrame(
             null;
 
         if (currentRay) {
-
             hoverTarget =
                 findNearestTarget(
                     currentRay.origin,
@@ -1153,7 +1208,6 @@ function onXRFrame(
         const view
         of viewerPose.views
     ) {
-
         const viewport =
             session.renderState
                 .baseLayer
@@ -1166,11 +1220,11 @@ function onXRFrame(
             viewport.height
         );
 
+        drawGoal(view);
         drawBoxes(view);
         drawButtons(view);
 
         if (currentRay) {
-
             drawRay(
                 view,
                 currentRay.origin,
@@ -1180,15 +1234,12 @@ function onXRFrame(
     }
 }
 
-
 // ==================================================
 // WebXR確認
 // ==================================================
 
 async function checkXR() {
-
     if (!window.isSecureContext) {
-
         status.textContent =
             "WebXRにはHTTPSが必要です。";
 
@@ -1196,7 +1247,6 @@ async function checkXR() {
     }
 
     if (!navigator.xr) {
-
         xrButton.textContent =
             "WebXR非対応";
 
@@ -1213,7 +1263,6 @@ async function checkXR() {
             );
 
     if (supported) {
-
         xrButton.disabled =
             false;
 
@@ -1222,9 +1271,7 @@ async function checkXR() {
 
         status.textContent =
             "Immersive AR対応";
-
     } else {
-
         xrButton.textContent =
             "AR非対応";
 
@@ -1233,7 +1280,6 @@ async function checkXR() {
     }
 }
 
-
 // ==================================================
 // MR開始
 // ==================================================
@@ -1241,16 +1287,13 @@ async function checkXR() {
 xrButton.addEventListener(
     "click",
     async () => {
-
         if (xrSession) {
-
             await xrSession.end();
 
             return;
         }
 
         try {
-
             xrSession =
                 await navigator.xr
                     .requestSession(
@@ -1274,7 +1317,6 @@ xrButton.addEventListener(
             await gl.makeXRCompatible();
 
             xrSession.updateRenderState({
-
                 baseLayer:
                     new XRWebGLLayer(
                         xrSession,
@@ -1297,11 +1339,12 @@ xrButton.addEventListener(
                 gl.DEPTH_TEST
             );
 
+            status.textContent =
+                "赤い箱を赤い枠の中へ移動してください。";
 
             xrSession.addEventListener(
                 "selectstart",
                 (event) => {
-
                     const ray =
                         getRay(
                             event.frame,
@@ -1309,7 +1352,6 @@ xrButton.addEventListener(
                         );
 
                     if (!ray) {
-
                         return;
                     }
 
@@ -1320,33 +1362,26 @@ xrButton.addEventListener(
                         );
 
                     if (!target) {
-
                         return;
                     }
-
 
                     if (
                         target.type ===
                         "add"
                     ) {
-
                         addNewBox();
-
                         return;
                     }
-
 
                     if (
                         target.type ===
                         "scaleUp"
                     ) {
-
                         if (
                             boxes[
                                 selectedBoxIndex
                             ]
                         ) {
-
                             boxes[
                                 selectedBoxIndex
                             ].scale =
@@ -1362,18 +1397,15 @@ xrButton.addEventListener(
                         return;
                     }
 
-
                     if (
                         target.type ===
                         "scaleDown"
                     ) {
-
                         if (
                             boxes[
                                 selectedBoxIndex
                             ]
                         ) {
-
                             boxes[
                                 selectedBoxIndex
                             ].scale =
@@ -1389,12 +1421,10 @@ xrButton.addEventListener(
                         return;
                     }
 
-
                     if (
                         target.type ===
                         "box"
                     ) {
-
                         selectedBoxIndex =
                             target.index;
 
@@ -1420,7 +1450,6 @@ xrButton.addEventListener(
                             ].center;
 
                         const toCenter = [
-
                             center[0] -
                             ray.origin[0],
 
@@ -1440,7 +1469,6 @@ xrButton.addEventListener(
                                         toCenter,
                                         ray.direction
                                     ),
-
                                     3.0
                                 )
                             );
@@ -1451,16 +1479,13 @@ xrButton.addEventListener(
                 }
             );
 
-
             xrSession.addEventListener(
                 "selectend",
                 (event) => {
-
                     if (
                         event.inputSource !==
                         activeInputSource
                     ) {
-
                         return;
                     }
 
@@ -1478,7 +1503,6 @@ xrButton.addEventListener(
                         duration < 350 &&
                         pressStartCenter
                     ) {
-
                         const dx =
                             box.center[0] -
                             pressStartCenter[0];
@@ -1499,7 +1523,6 @@ xrButton.addEventListener(
                             );
 
                         if (moved < 0.08) {
-
                             box.center =
                                 [
                                     ...pressStartCenter
@@ -1521,14 +1544,14 @@ xrButton.addEventListener(
 
                     pressStartCenter =
                         null;
+
+                    checkGoal();
                 }
             );
-
 
             xrSession.addEventListener(
                 "end",
                 () => {
-
                     xrSession =
                         null;
 
@@ -1555,13 +1578,11 @@ xrButton.addEventListener(
                 );
 
         } catch (error) {
-
             status.textContent =
                 "MR開始エラー: " +
                 error.message;
         }
     }
 );
-
 
 checkXR();
