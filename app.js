@@ -107,6 +107,7 @@ let boxes = [
 ];
 
 let selectedBoxIndex = null;
+let previousGoalObjectCount = 0;
 
 // ==================================================
 // ゴール
@@ -1404,10 +1405,12 @@ function updateTaskState() {
         correctCount
     );
 
-    // 正解した瞬間に選択を解除し、調整パネルを閉じる
+    // ゴール内の正解オブジェクト数が増えた瞬間に
+    // 選択を解除して調整パネルを閉じる。
+    // 2個必要な問題でも1個目を入れた時点で閉じる。
     if (
-        gameCleared &&
-        !wasCleared
+        correctCount >
+        previousGoalObjectCount
     ) {
         selectedBoxIndex = null;
 
@@ -1420,6 +1423,9 @@ function updateTaskState() {
         rotationMode = null;
         rotationInputSource = null;
     }
+
+    previousGoalObjectCount =
+        correctCount;
 
     if (
         gameCleared &&
@@ -2889,6 +2895,7 @@ function resetObjectsForTask() {
     ];
 
     selectedBoxIndex = null;
+    previousGoalObjectCount = 0;
 
     isDragging = false;
     activeInputSource = null;
