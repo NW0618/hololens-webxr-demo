@@ -77,7 +77,7 @@ let finishEffectStartTime = 0;
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
-const NEXT_TASK_CENTER = [0.62, -0.52, -1.20];
+const NEXT_TASK_CENTER = [0.22, -0.70, -1.20];
 const NEXT_TASK_HALF = 0.14;
 
 const TIMER_PANEL_CENTER = [0.0, 0.88, -1.30];
@@ -106,7 +106,7 @@ let selectedBoxIndex = null;
 // 左側へ配置。2個を並べて入れやすい大きさは維持
 // ==================================================
 
-const GOAL_CENTER = [-0.82, -0.24, -1.5];
+const GOAL_CENTER = [-0.72, -0.02, -1.5];
 const GOAL_HALF = 0.50;
 const GOAL_DEPTH_TOLERANCE = 0.75;
 
@@ -115,15 +115,15 @@ const GOAL_DEPTH_TOLERANCE = 0.75;
 // 画面上部から右下側へ移動
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.62, -0.30, -1.32];
+const TASK_PANEL_CENTER = [0.22, -0.48, -1.32];
 
 // ==================================================
 // オブジェクト追加ボタン：右下側
 // 追加されたオブジェクトと重ならない位置
 // ==================================================
 
-const ADD_CENTER = [0.28, -0.72, -1.20];
-const ADD_HALF = 0.16;
+const ADD_CENTER = [0.72, -0.48, -1.20];
+const ADD_HALF = 0.20;
 
 // ==================================================
 // 移動状態
@@ -2100,43 +2100,217 @@ function drawControlPanel(view) {
 // 追加アイコン
 // ==================================================
 
-function drawAddButton(view) {
-    const color =
-        (
-            hoverTarget &&
-            hoverTarget.type === "add"
-        )
-            ? COLORS.buttonHover
-            : COLORS.green;
 
+// ==================================================
+// 「追加」文字描画
+// WebGLの細い直方体を組み合わせた簡易線画
+// ==================================================
+
+function drawStroke(
+    view,
+    center,
+    halfW,
+    halfH,
+    color,
+    rotation = 0
+) {
     drawShape(
         view,
         shapeMatrix(
-            [
-                ADD_CENTER[0] - 0.055,
-                ADD_CENTER[1] - 0.035,
-                ADD_CENTER[2]
-            ],
-            0.075,
-            0.075,
-            0.055
+            center,
+            halfW,
+            halfH,
+            0.012,
+            rotation
         ),
         color
     );
+}
 
+function drawAddJapaneseText(view, center, color) {
+    const z = center[2] + 0.050;
+
+    // ----------------------------
+    // 「追」風の簡易線画（左側）
+    // ----------------------------
+    const x1 = center[0] - 0.070;
+    const y = center[1];
+
+    // しんにょう風
+    drawStroke(
+        view,
+        [x1 - 0.034, y + 0.030, z],
+        0.020,
+        0.006,
+        color,
+        -Math.PI / 5
+    );
+
+    drawStroke(
+        view,
+        [x1 - 0.030, y - 0.020, z],
+        0.006,
+        0.035,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x1 - 0.006, y - 0.052, z],
+        0.035,
+        0.006,
+        color
+    );
+
+    // 右上部分
+    drawStroke(
+        view,
+        [x1 + 0.018, y + 0.042, z],
+        0.030,
+        0.006,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x1 + 0.018, y + 0.012, z],
+        0.030,
+        0.006,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x1 + 0.018, y - 0.018, z],
+        0.030,
+        0.006,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x1 - 0.008, y + 0.012, z],
+        0.006,
+        0.036,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x1 + 0.044, y + 0.012, z],
+        0.006,
+        0.036,
+        color
+    );
+
+
+    // ----------------------------
+    // 「加」風の簡易線画（右側）
+    // ----------------------------
+    const x2 = center[0] + 0.070;
+
+    // 力
+    drawStroke(
+        view,
+        [x2 - 0.034, y + 0.028, z],
+        0.032,
+        0.006,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x2 - 0.014, y - 0.004, z],
+        0.006,
+        0.038,
+        color,
+        0.05
+    );
+
+    drawStroke(
+        view,
+        [x2 - 0.038, y - 0.018, z],
+        0.028,
+        0.006,
+        color,
+        -0.12
+    );
+
+    // 口
+    drawStroke(
+        view,
+        [x2 + 0.038, y + 0.026, z],
+        0.025,
+        0.006,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x2 + 0.038, y - 0.030, z],
+        0.025,
+        0.006,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x2 + 0.014, y - 0.002, z],
+        0.006,
+        0.034,
+        color
+    );
+
+    drawStroke(
+        view,
+        [x2 + 0.062, y - 0.002, z],
+        0.006,
+        0.034,
+        color
+    );
+}
+
+function drawAddButton(view) {
+    const isHover =
+        hoverTarget &&
+        hoverTarget.type === "add";
+
+    const backgroundColor =
+        isHover
+            ? [0.24, 0.30, 0.26, 1.0]
+            : [0.10, 0.16, 0.12, 1.0];
+
+    const textColor =
+        isHover
+            ? COLORS.white
+            : COLORS.green;
+
+    // 横長のボタン背景
     drawShape(
         view,
         shapeMatrix(
-            [
-                ADD_CENTER[0] + 0.055,
-                ADD_CENTER[1] + 0.035,
-                ADD_CENTER[2] - 0.025
-            ],
-            0.075,
-            0.075,
-            0.055
+            ADD_CENTER,
+            0.20,
+            0.11,
+            0.025
         ),
-        color
+        backgroundColor
+    );
+
+    // 枠
+    drawFrame(
+        view,
+        ADD_CENTER,
+        0.115,
+        textColor,
+        0.030
+    );
+
+    // 「追加」文字
+    drawAddJapaneseText(
+        view,
+        ADD_CENTER,
+        textColor
     );
 }
 
