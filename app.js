@@ -64,20 +64,20 @@ let selectedBoxIndex = null;
 
 const GOAL_CENTER = [0.0, -0.48, -1.5];
 const GOAL_HALF = 0.50;
-const GOAL_DEPTH_TOLERANCE = 0.30;
+const GOAL_DEPTH_TOLERANCE = 0.75;
 
 // ==================================================
 // 問題表示パネル（MR空間内）
 // 青い球体 × 2 を図形で表示
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.0, 0.88, -1.32];
+const TASK_PANEL_CENTER = [0.0, 0.48, -1.32];
 
 // ==================================================
 // オブジェクト追加ボタン：中央
 // ==================================================
 
-const ADD_CENTER = [0.0, 0.55, -1.25];
+const ADD_CENTER = [0.0, 0.72, -1.25];
 const ADD_HALF = 0.16;
 
 // ==================================================
@@ -792,7 +792,9 @@ function drawObjects(view) {
 
 function isInsideGoal(box) {
     const objectHalf = BOX_HALF * box.scale;
-    const allowed = GOAL_HALF - objectHalf;
+    // 見た目では枠内に入っていても、手前/奥方向の差で
+    // 不正解になりにくいよう、少し余裕を持たせる。
+    const allowed = GOAL_HALF - objectHalf + 0.05;
 
     if (allowed <= 0) {
         return false;
@@ -1337,7 +1339,7 @@ function drawControlPanel(view) {
         shapeMatrix(
             panel.center,
             0.32,
-            0.47,
+            0.60,
             0.018
         ),
         COLORS.panel
@@ -1563,6 +1565,47 @@ function drawRay(view, origin, direction) {
     gl.uniform4fv(colorLocation, rayColor);
     gl.drawArrays(gl.LINES, 0, 2);
 }
+
+// ==================================================
+// 選択中オブジェクト削除
+// ==================================================
+
+function deleteSelectedObject() {
+    if (
+        selectedBoxIndex === null ||
+        !boxes[selectedBoxIndex]
+    ) {
+        return;
+    }
+
+    const deleteIndex = selectedBoxIndex;
+
+    boxes.splice(
+        deleteIndex,
+        1
+    );
+
+    isDragging = false;
+    activeInputSource = null;
+    activeBoxIndex = null;
+    pressStartCenter = null;
+
+    isRotating = false;
+    rotationMode = null;
+    rotationInputSource = null;
+
+    if (boxes.length === 0) {
+        selectedBoxIndex = null;
+    } else {
+        selectedBoxIndex = Math.min(
+            deleteIndex,
+            boxes.length - 1
+        );
+    }
+
+    updateTaskState();
+}
+
 
 // ==================================================
 // オブジェクト追加
