@@ -84,11 +84,11 @@ let finishEffectStartTime = 0;
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
-const NEXT_TASK_CENTER = [0.22, -0.70, -1.20];
+const NEXT_TASK_CENTER = [0.02, -0.70, -1.20];
 const NEXT_TASK_HALF = 0.14;
 
-const TIMER_PANEL_CENTER = [0.0, 0.88, -1.30];
-const PROGRESS_PANEL_CENTER = [-0.44, 0.88, -1.30];
+const TIMER_PANEL_CENTER = [-0.20, 0.88, -1.30];
+const PROGRESS_PANEL_CENTER = [-0.64, 0.88, -1.30];
 
 // ==================================================
 // 初期オブジェクト：1個だけ
@@ -96,7 +96,7 @@ const PROGRESS_PANEL_CENTER = [-0.44, 0.88, -1.30];
 
 let boxes = [
     {
-        center: [0.15, 0.0, -1.5],
+        center: [-0.05, 0.0, -1.5],
         shape: "cube",
         colorName: "blue",
         color: COLORS.blue,
@@ -113,7 +113,7 @@ let selectedBoxIndex = null;
 // 左側へ配置。2個を並べて入れやすい大きさは維持
 // ==================================================
 
-const GOAL_CENTER = [-0.72, -0.02, -1.5];
+const GOAL_CENTER = [-0.92, -0.02, -1.5];
 const GOAL_HALF = 0.50;
 const GOAL_DEPTH_TOLERANCE = 0.75;
 
@@ -122,18 +122,18 @@ const GOAL_DEPTH_TOLERANCE = 0.75;
 // 画面上部から右下側へ移動
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.22, -0.48, -1.32];
+const TASK_PANEL_CENTER = [0.02, -0.48, -1.32];
 
 // ==================================================
 // オブジェクト追加ボタン：右下側
 // 追加されたオブジェクトと重ならない位置
 // ==================================================
 
-const ADD_CENTER = [0.72, -0.48, -1.20];
+const ADD_CENTER = [0.52, -0.48, -1.20];
 const ADD_HALF = 0.20;
 
 // 「追加」の右側に独立した削除ボタン
-const DELETE_CENTER = [1.18, -0.48, -1.20];
+const DELETE_CENTER = [0.98, -0.48, -1.20];
 const DELETE_HALF = 0.20;
 
 // ==================================================
@@ -3159,7 +3159,7 @@ function addNewObject() {
 
     boxes.push({
         center: [
-            0.18,
+            -0.02,
             0.18,
             -1.72 - offset
         ],
