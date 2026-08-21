@@ -84,11 +84,11 @@ let finishEffectStartTime = 0;
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
-const NEXT_TASK_CENTER = [0.02, -0.70, -1.20];
+const NEXT_TASK_CENTER = [-0.05, 0.0, -1.20];
 const NEXT_TASK_HALF = 0.14;
 
-const TIMER_PANEL_CENTER = [-0.20, 0.88, -1.30];
-const PROGRESS_PANEL_CENTER = [-0.64, 0.88, -1.30];
+const TIMER_PANEL_CENTER = [-0.05, 0.96, -1.30];
+const PROGRESS_PANEL_CENTER = [-0.62, 0.96, -1.30];
 
 // ==================================================
 // 初期オブジェクト：1個だけ
@@ -113,7 +113,7 @@ let selectedBoxIndex = null;
 // 左側へ配置。2個を並べて入れやすい大きさは維持
 // ==================================================
 
-const GOAL_CENTER = [-0.92, -0.02, -1.5];
+const GOAL_CENTER = [-1.12, -0.02, -1.5];
 const GOAL_HALF = 0.50;
 const GOAL_DEPTH_TOLERANCE = 0.75;
 
@@ -122,18 +122,18 @@ const GOAL_DEPTH_TOLERANCE = 0.75;
 // 画面上部から右下側へ移動
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.02, -0.48, -1.32];
+const TASK_PANEL_CENTER = [0.02, -0.62, -1.32];
 
 // ==================================================
 // オブジェクト追加ボタン：右下側
 // 追加されたオブジェクトと重ならない位置
 // ==================================================
 
-const ADD_CENTER = [0.52, -0.48, -1.20];
+const ADD_CENTER = [0.72, -0.66, -1.20];
 const ADD_HALF = 0.20;
 
 // 「追加」の右側に独立した削除ボタン
-const DELETE_CENTER = [0.98, -0.48, -1.20];
+const DELETE_CENTER = [1.32, -0.66, -1.20];
 const DELETE_HALF = 0.20;
 
 // ==================================================
@@ -1899,9 +1899,9 @@ function drawTaskPanel(view) {
         drawCheckMark(
             view,
             [
-                -0.05,
-                0.0,
-                -1.44
+                TASK_PANEL_CENTER[0],
+                TASK_PANEL_CENTER[1],
+                TASK_PANEL_CENTER[2] + 0.04
             ],
             GOAL_CLEAR_COLOR
         );
@@ -1909,17 +1909,18 @@ function drawTaskPanel(view) {
     }
 
     if (gameCleared) {
-        // 正解チェックは初期オブジェクトと同じ位置に表示
+        // 正解チェックは問題パネル内に表示
         drawCheckMark(
             view,
             [
-                -0.05,
-                0.0,
-                -1.44
+                TASK_PANEL_CENTER[0] - 0.08,
+                TASK_PANEL_CENTER[1],
+                TASK_PANEL_CENTER[2] + 0.04
             ],
             GOAL_CLEAR_COLOR
         );
 
+        // 「>」は初期オブジェクトと同じ位置に表示
         drawNextTaskButton(view);
         return;
     }
@@ -3177,8 +3178,8 @@ function addNewObject() {
 
     boxes.push({
         center: [
-            -0.02,
-            0.18,
+            0.08,
+            0.24,
             -1.72 - offset
         ],
         shape: "cube",
