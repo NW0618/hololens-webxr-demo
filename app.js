@@ -455,7 +455,10 @@ function getPanelLayout() {
 
         cube: [panelX - 0.17, shapeY, panelZ + 0.04],
         sphere: [panelX, shapeY, panelZ + 0.04],
-        tetra: [panelX + 0.17, shapeY, panelZ + 0.04]
+        tetra: [panelX + 0.17, shapeY, panelZ + 0.04],
+
+        // 削除ボタン：操作パネル右上
+        deleteButton: [panelX + 0.24, panelY + 0.50, panelZ + 0.06]
     };
 }
 
@@ -493,7 +496,8 @@ function findNearestTarget(origin, direction) {
             { type: "colorGreen", center: panel.green },
             { type: "shapeCube", center: panel.cube },
             { type: "shapeSphere", center: panel.sphere },
-            { type: "shapeTetra", center: panel.tetra }
+            { type: "shapeTetra", center: panel.tetra },
+            { type: "deleteObject", center: panel.deleteButton }
         ];
 
         for (const control of controls) {
@@ -1327,6 +1331,47 @@ function drawShapeIcon(
 // 操作パネル描画
 // ==================================================
 
+function drawDeleteButton(view, center) {
+    drawShape(
+        view,
+        shapeMatrix(center, 0.080, 0.080, 0.030),
+        COLORS.red
+    );
+
+    const z = center[2] + 0.040;
+
+    drawShape(
+        view,
+        shapeMatrix(
+            [center[0], center[1], z],
+            0.065, 0.012, 0.012,
+            Math.PI / 4
+        ),
+        COLORS.white
+    );
+
+    drawShape(
+        view,
+        shapeMatrix(
+            [center[0], center[1], z],
+            0.065, 0.012, 0.012,
+            -Math.PI / 4
+        ),
+        COLORS.white
+    );
+
+    if (
+        hoverTarget &&
+        hoverTarget.type === "deleteObject"
+    ) {
+        drawSelectionFrame(view, center, COLORS.gray);
+    }
+}
+
+// ==================================================
+// 操作パネル
+// ==================================================
+
 function drawControlPanel(view) {
     const panel = getPanelLayout();
 
@@ -1344,6 +1389,9 @@ function drawControlPanel(view) {
         ),
         COLORS.panel
     );
+
+    // 右上の赤い×削除ボタン
+    drawDeleteButton(view, panel.deleteButton);
 
     drawMinus(
         view,
@@ -1594,14 +1642,8 @@ function deleteSelectedObject() {
     rotationMode = null;
     rotationInputSource = null;
 
-    if (boxes.length === 0) {
-        selectedBoxIndex = null;
-    } else {
-        selectedBoxIndex = Math.min(
-            deleteIndex,
-            boxes.length - 1
-        );
-    }
+    // 削除後は選択解除して操作パネルを閉じる
+    selectedBoxIndex = null;
 
     updateTaskState();
 }
@@ -1906,6 +1948,11 @@ xrButton.addEventListener(
 
                     if (target.type === "add") {
                         addNewObject();
+                        return;
+                    }
+
+                    if (target.type === "deleteObject") {
+                        deleteSelectedObject();
                         return;
                     }
 
