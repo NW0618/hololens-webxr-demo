@@ -1259,23 +1259,9 @@ function drawControlPanel(view) {
     // 下段：色
     // ----------------------------
 
-    const redColor =
-        controlColor(
-            "colorRed",
-            COLORS.red
-        );
-
-    const blueColor =
-        controlColor(
-            "colorBlue",
-            COLORS.blue
-        );
-
-    const greenColor =
-        controlColor(
-            "colorGreen",
-            COLORS.green
-        );
+const redColor = COLORS.red;
+const blueColor = COLORS.blue;
+const greenColor = COLORS.green;
 
     drawShape(
         view,
