@@ -1000,7 +1000,10 @@ function findNearestTarget(origin, direction) {
     if (
         deleteDistance !== null &&
         selectedBoxIndex !== null &&
-        boxes[selectedBoxIndex]
+        boxes[selectedBoxIndex] &&
+        !isLockedCorrectObject(
+            boxes[selectedBoxIndex]
+        )
     ) {
         if (
             result === null ||
@@ -1079,6 +1082,15 @@ function findNearestTarget(origin, direction) {
     }
 
     for (let i = 0; i < boxes.length; i++) {
+        // ゴール内で正解済みのオブジェクトは操作対象にしない
+        if (
+            isLockedCorrectObject(
+                boxes[i]
+            )
+        ) {
+            continue;
+        }
+
         const half = BOX_HALF * boxes[i].scale;
         const distance = rayBoxDistance(
             origin,
@@ -1375,6 +1387,15 @@ function isInsideGoal(box) {
         dx <= allowed &&
         dy <= allowed &&
         dz <= GOAL_DEPTH_TOLERANCE
+    );
+}
+
+function isLockedCorrectObject(box) {
+    return (
+        box &&
+        box.colorName === currentTask.colorName &&
+        box.shape === currentTask.shape &&
+        isInsideGoal(box)
     );
 }
 
@@ -2701,7 +2722,10 @@ function drawAddButton(view) {
 function drawStandaloneDeleteButton(view) {
     const hasSelection =
         selectedBoxIndex !== null &&
-        boxes[selectedBoxIndex];
+        boxes[selectedBoxIndex] &&
+        !isLockedCorrectObject(
+            boxes[selectedBoxIndex]
+        );
 
     const isHover =
         hasSelection &&
@@ -3205,7 +3229,10 @@ function advanceTimedQuestionImmediately() {
 function deleteSelectedObject() {
     if (
         selectedBoxIndex === null ||
-        !boxes[selectedBoxIndex]
+        !boxes[selectedBoxIndex] ||
+        isLockedCorrectObject(
+            boxes[selectedBoxIndex]
+        )
     ) {
         return;
     }
