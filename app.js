@@ -2440,7 +2440,7 @@ function addNewObject() {
     const offset =
         Math.max(
             0,
-            boxes.length - 3
+            boxes.length - 1
         ) *
         0.18;
 
