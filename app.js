@@ -77,7 +77,7 @@ let finishEffectStartTime = 0;
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
-const NEXT_TASK_CENTER = [0.38, -0.76, -1.20];
+const NEXT_TASK_CENTER = [0.62, -0.52, -1.20];
 const NEXT_TASK_HALF = 0.14;
 
 const TIMER_PANEL_CENTER = [0.0, 0.88, -1.30];
@@ -106,7 +106,7 @@ let selectedBoxIndex = null;
 // 左側へ配置。2個を並べて入れやすい大きさは維持
 // ==================================================
 
-const GOAL_CENTER = [-0.65, -0.42, -1.5];
+const GOAL_CENTER = [-0.82, -0.24, -1.5];
 const GOAL_HALF = 0.50;
 const GOAL_DEPTH_TOLERANCE = 0.75;
 
@@ -115,14 +115,14 @@ const GOAL_DEPTH_TOLERANCE = 0.75;
 // 画面上部から右下側へ移動
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.48, -0.52, -1.32];
+const TASK_PANEL_CENTER = [0.62, -0.30, -1.32];
 
 // ==================================================
 // オブジェクト追加ボタン：右下側
 // 追加されたオブジェクトと重ならない位置
 // ==================================================
 
-const ADD_CENTER = [0.82, -0.76, -1.20];
+const ADD_CENTER = [0.28, -0.72, -1.20];
 const ADD_HALF = 0.16;
 
 // ==================================================
