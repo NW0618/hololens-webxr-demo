@@ -40,28 +40,10 @@ const COLORS = {
 
 let boxes = [
     {
-        center: [-0.45, 0.0, -1.5],
-        shape: "cube",
-        colorName: "red",
-        color: COLORS.red,
-        scale: 1.0,
-        rotationX: 0,
-        rotationY: 0
-    },
-    {
         center: [0.0, 0.0, -1.5],
         shape: "cube",
         colorName: "blue",
         color: COLORS.blue,
-        scale: 1.0,
-        rotationX: 0,
-        rotationY: 0
-    },
-    {
-        center: [0.45, 0.0, -1.5],
-        shape: "cube",
-        colorName: "green",
-        color: COLORS.green,
         scale: 1.0,
         rotationX: 0,
         rotationY: 0
