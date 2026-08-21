@@ -81,6 +81,11 @@ let finalElapsedMs = 0;
 let finishedAll = false;
 let finishEffectStartTime = 0;
 
+// 本番1～4問目の自動遷移
+let autoAdvancePending = false;
+let autoAdvanceStartTime = 0;
+const AUTO_ADVANCE_DELAY_MS = 800;
+
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
@@ -964,7 +969,8 @@ function findNearestTarget(origin, direction) {
 
     if (
         countdownActive ||
-        finishedAll
+        finishedAll ||
+        autoAdvancePending
     ) {
         return null;
     }
@@ -1007,7 +1013,10 @@ function findNearestTarget(origin, direction) {
         }
     }
 
-    if (gameCleared) {
+    if (
+        gameCleared &&
+        currentQuestionIndex === 0
+    ) {
         const nextDistance = rayBoxDistance(
             origin,
             direction,
@@ -1405,9 +1414,8 @@ function updateTaskState() {
         correctCount
     );
 
-    // ゴール内の正解オブジェクト数が増えた瞬間に
-    // 選択を解除して調整パネルを閉じる。
-    // 2個必要な問題でも1個目を入れた時点で閉じる。
+    // ゴール内の正解オブジェクト数が増えたら
+    // 選択解除して調整パネルを閉じる
     if (
         correctCount >
         previousGoalObjectCount
@@ -1427,6 +1435,7 @@ function updateTaskState() {
     previousGoalObjectCount =
         correctCount;
 
+    // 本番最終問題はここで完全終了
     if (
         gameCleared &&
         !wasCleared &&
@@ -1439,11 +1448,24 @@ function updateTaskState() {
         return;
     }
 
+    // 本番1～4問目は0.8秒後に自動で次へ
+    if (
+        gameCleared &&
+        !wasCleared &&
+        currentQuestionIndex > 0 &&
+        currentQuestionIndex <
+            TOTAL_TIMED_QUESTIONS
+    ) {
+        autoAdvancePending = true;
+        autoAdvanceStartTime =
+            performance.now();
+    }
+
     if (gameCleared) {
         status.textContent =
             currentQuestionIndex === 0
                 ? "練習CLEAR! 次へ進むと本番開始です。"
-                : "CLEAR! 次の問題へ進んでください。";
+                : "CLEAR! 次の問題へ進みます。";
     } else {
         status.textContent =
             getTaskText() +
@@ -1926,8 +1948,13 @@ function drawTaskPanel(view) {
             GOAL_CLEAR_COLOR
         );
 
-        // 「>」は初期オブジェクトと同じ位置に表示
-        drawNextTaskButton(view);
+        // 「>」は練習問題クリア時だけ表示
+        if (
+            currentQuestionIndex === 0
+        ) {
+            drawNextTaskButton(view);
+        }
+
         return;
     }
 
@@ -2897,6 +2924,9 @@ function resetObjectsForTask() {
     selectedBoxIndex = null;
     previousGoalObjectCount = 0;
 
+    autoAdvancePending = false;
+    autoAdvanceStartTime = 0;
+
     isDragging = false;
     activeInputSource = null;
     activeBoxIndex = null;
@@ -2999,7 +3029,7 @@ function updateHtmlTaskDisplay() {
         taskBox.textContent =
             currentQuestionIndex === 0
                 ? "練習クリア！ 次へ進むと3秒カウントダウン後に本番開始です。"
-                : "CLEAR! 次の問題へ進んでください。";
+                : "CLEAR! 自動で次の問題へ進みます。";
 
         taskBox.style.borderColor =
             "#d4a017";
@@ -3036,6 +3066,9 @@ function startNewTask() {
         countdownActive = true;
         countdownStartTime =
             performance.now();
+
+        autoAdvancePending = false;
+        autoAdvanceStartTime = 0;
 
         timerRunning = false;
         timedStartTime = 0;
@@ -3141,6 +3174,34 @@ function completeAllQuestions(now) {
     updateHtmlTaskDisplay();
 }
 
+
+function advanceTimedQuestionImmediately() {
+    if (
+        finishedAll ||
+        currentQuestionIndex <= 0 ||
+        currentQuestionIndex >=
+            TOTAL_TIMED_QUESTIONS
+    ) {
+        return;
+    }
+
+    currentQuestionIndex++;
+
+    currentTask =
+        taskSequence[
+            currentQuestionIndex
+        ];
+
+    gameCleared = false;
+    correctCount = 0;
+
+    autoAdvancePending = false;
+    autoAdvanceStartTime = 0;
+
+    resetObjectsForTask();
+    updateTaskState();
+}
+
 function deleteSelectedObject() {
     if (
         selectedBoxIndex === null ||
@@ -3228,6 +3289,16 @@ function onXRFrame(time, frame) {
     updateCountdownState(
         now
     );
+
+    if (
+        autoAdvancePending &&
+        !finishedAll &&
+        now -
+            autoAdvanceStartTime >=
+            AUTO_ADVANCE_DELAY_MS
+    ) {
+        advanceTimedQuestionImmediately();
+    }
 
     if (
         timerRunning &&
@@ -3509,7 +3580,8 @@ xrButton.addEventListener(
 
                     if (
                         countdownActive ||
-                        finishedAll
+                        finishedAll ||
+                        autoAdvancePending
                     ) {
                         return;
                     }
