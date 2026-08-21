@@ -9,6 +9,12 @@ let program = null;
 let meshes = {};
 let rayBuffer = null;
 
+let textProgram = null;
+let addTextTexture = null;
+let textQuadPositionBuffer = null;
+let textQuadUvBuffer = null;
+let textQuadIndexBuffer = null;
+
 // ==================================================
 // 基本設定
 // ==================================================
@@ -176,6 +182,52 @@ void main() {
 `;
 
 // ==================================================
+// Canvas文字テクスチャ用シェーダー
+// ==================================================
+
+const textVertexShaderSource = `
+attribute vec3 aPosition;
+attribute vec2 aTexCoord;
+
+uniform mat4 uProjectionMatrix;
+uniform mat4 uViewMatrix;
+uniform mat4 uModelMatrix;
+
+varying vec2 vTexCoord;
+
+void main() {
+    vTexCoord = aTexCoord;
+
+    gl_Position =
+        uProjectionMatrix *
+        uViewMatrix *
+        uModelMatrix *
+        vec4(aPosition, 1.0);
+}
+`;
+
+const textFragmentShaderSource = `
+precision mediump float;
+
+uniform sampler2D uTexture;
+varying vec2 vTexCoord;
+
+void main() {
+    vec4 texColor =
+        texture2D(
+            uTexture,
+            vTexCoord
+        );
+
+    if (texColor.a < 0.05) {
+        discard;
+    }
+
+    gl_FragColor = texColor;
+}
+`;
+
+// ==================================================
 // WebGL
 // ==================================================
 
@@ -206,6 +258,53 @@ function createProgram() {
 
     return shaderProgram;
 }
+
+function createTextProgram() {
+    const vertexShader =
+        createShader(
+            gl.VERTEX_SHADER,
+            textVertexShaderSource
+        );
+
+    const fragmentShader =
+        createShader(
+            gl.FRAGMENT_SHADER,
+            textFragmentShaderSource
+        );
+
+    const shaderProgram =
+        gl.createProgram();
+
+    gl.attachShader(
+        shaderProgram,
+        vertexShader
+    );
+
+    gl.attachShader(
+        shaderProgram,
+        fragmentShader
+    );
+
+    gl.linkProgram(
+        shaderProgram
+    );
+
+    if (
+        !gl.getProgramParameter(
+            shaderProgram,
+            gl.LINK_STATUS
+        )
+    ) {
+        throw new Error(
+            gl.getProgramInfoLog(
+                shaderProgram
+            )
+        );
+    }
+
+    return shaderProgram;
+}
+
 
 // ==================================================
 // メッシュ作成
@@ -304,6 +403,349 @@ function createTetraMesh() {
     ];
 
     return createMesh(vertices, indices);
+}
+
+
+// ==================================================
+// Canvasで日本語をテクスチャ化
+// ==================================================
+
+function createJapaneseTextTexture(
+    textValue,
+    options = {}
+) {
+    const width =
+        options.width || 512;
+
+    const height =
+        options.height || 256;
+
+    const fontSize =
+        options.fontSize || 128;
+
+    const canvas =
+        document.createElement(
+            "canvas"
+        );
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx =
+        canvas.getContext(
+            "2d"
+        );
+
+    if (!ctx) {
+        throw new Error(
+            "Canvas 2D contextを作成できませんでした。"
+        );
+    }
+
+    ctx.clearRect(
+        0,
+        0,
+        width,
+        height
+    );
+
+    ctx.textAlign =
+        "center";
+
+    ctx.textBaseline =
+        "middle";
+
+    ctx.font =
+        "700 " +
+        fontSize +
+        "px 'Yu Gothic UI', 'Yu Gothic', 'Meiryo', sans-serif";
+
+    ctx.fillStyle =
+        options.color ||
+        "#ffffff";
+
+    ctx.fillText(
+        textValue,
+        width / 2,
+        height / 2
+    );
+
+    const texture =
+        gl.createTexture();
+
+    gl.bindTexture(
+        gl.TEXTURE_2D,
+        texture
+    );
+
+    gl.pixelStorei(
+        gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,
+        true
+    );
+
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        canvas
+    );
+
+    gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_MIN_FILTER,
+        gl.LINEAR
+    );
+
+    gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_MAG_FILTER,
+        gl.LINEAR
+    );
+
+    gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_WRAP_S,
+        gl.CLAMP_TO_EDGE
+    );
+
+    gl.texParameteri(
+        gl.TEXTURE_2D,
+        gl.TEXTURE_WRAP_T,
+        gl.CLAMP_TO_EDGE
+    );
+
+    gl.bindTexture(
+        gl.TEXTURE_2D,
+        null
+    );
+
+    return texture;
+}
+
+function createTextQuadGeometry() {
+    const positions =
+        new Float32Array([
+            -1, -1, 0,
+             1, -1, 0,
+             1,  1, 0,
+            -1,  1, 0
+        ]);
+
+    const uvs =
+        new Float32Array([
+            0, 1,
+            1, 1,
+            1, 0,
+            0, 0
+        ]);
+
+    const indices =
+        new Uint16Array([
+            0, 1, 2,
+            0, 2, 3
+        ]);
+
+    textQuadPositionBuffer =
+        gl.createBuffer();
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        textQuadPositionBuffer
+    );
+
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        positions,
+        gl.STATIC_DRAW
+    );
+
+    textQuadUvBuffer =
+        gl.createBuffer();
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        textQuadUvBuffer
+    );
+
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        uvs,
+        gl.STATIC_DRAW
+    );
+
+    textQuadIndexBuffer =
+        gl.createBuffer();
+
+    gl.bindBuffer(
+        gl.ELEMENT_ARRAY_BUFFER,
+        textQuadIndexBuffer
+    );
+
+    gl.bufferData(
+        gl.ELEMENT_ARRAY_BUFFER,
+        indices,
+        gl.STATIC_DRAW
+    );
+}
+
+function drawTexturedQuad(
+    view,
+    center,
+    halfWidth,
+    halfHeight,
+    texture
+) {
+    if (
+        !texture ||
+        !textProgram
+    ) {
+        return;
+    }
+
+    gl.useProgram(
+        textProgram
+    );
+
+    const positionLocation =
+        gl.getAttribLocation(
+            textProgram,
+            "aPosition"
+        );
+
+    const texCoordLocation =
+        gl.getAttribLocation(
+            textProgram,
+            "aTexCoord"
+        );
+
+    const projectionLocation =
+        gl.getUniformLocation(
+            textProgram,
+            "uProjectionMatrix"
+        );
+
+    const viewLocation =
+        gl.getUniformLocation(
+            textProgram,
+            "uViewMatrix"
+        );
+
+    const modelLocation =
+        gl.getUniformLocation(
+            textProgram,
+            "uModelMatrix"
+        );
+
+    const textureLocation =
+        gl.getUniformLocation(
+            textProgram,
+            "uTexture"
+        );
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        textQuadPositionBuffer
+    );
+
+    gl.enableVertexAttribArray(
+        positionLocation
+    );
+
+    gl.vertexAttribPointer(
+        positionLocation,
+        3,
+        gl.FLOAT,
+        false,
+        0,
+        0
+    );
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        textQuadUvBuffer
+    );
+
+    gl.enableVertexAttribArray(
+        texCoordLocation
+    );
+
+    gl.vertexAttribPointer(
+        texCoordLocation,
+        2,
+        gl.FLOAT,
+        false,
+        0,
+        0
+    );
+
+    gl.bindBuffer(
+        gl.ELEMENT_ARRAY_BUFFER,
+        textQuadIndexBuffer
+    );
+
+    gl.uniformMatrix4fv(
+        projectionLocation,
+        false,
+        view.projectionMatrix
+    );
+
+    gl.uniformMatrix4fv(
+        viewLocation,
+        false,
+        view.transform.inverse.matrix
+    );
+
+    gl.uniformMatrix4fv(
+        modelLocation,
+        false,
+        shapeMatrix(
+            center,
+            halfWidth,
+            halfHeight,
+            1.0
+        )
+    );
+
+    gl.activeTexture(
+        gl.TEXTURE0
+    );
+
+    gl.bindTexture(
+        gl.TEXTURE_2D,
+        texture
+    );
+
+    gl.uniform1i(
+        textureLocation,
+        0
+    );
+
+    gl.enable(
+        gl.BLEND
+    );
+
+    gl.blendFunc(
+        gl.SRC_ALPHA,
+        gl.ONE_MINUS_SRC_ALPHA
+    );
+
+    gl.drawElements(
+        gl.TRIANGLES,
+        6,
+        gl.UNSIGNED_SHORT,
+        0
+    );
+
+    gl.disable(
+        gl.BLEND
+    );
+
+    gl.bindTexture(
+        gl.TEXTURE_2D,
+        null
+    );
 }
 
 function createGeometry() {
@@ -2101,175 +2543,6 @@ function drawControlPanel(view) {
 // ==================================================
 
 
-// ==================================================
-// 「追加」文字描画
-// WebGLの細い直方体を組み合わせた簡易線画
-// ==================================================
-
-function drawStroke(
-    view,
-    center,
-    halfW,
-    halfH,
-    color,
-    rotation = 0
-) {
-    drawShape(
-        view,
-        shapeMatrix(
-            center,
-            halfW,
-            halfH,
-            0.012,
-            rotation
-        ),
-        color
-    );
-}
-
-function drawAddJapaneseText(view, center, color) {
-    const z = center[2] + 0.050;
-
-    // ----------------------------
-    // 「追」風の簡易線画（左側）
-    // ----------------------------
-    const x1 = center[0] - 0.070;
-    const y = center[1];
-
-    // しんにょう風
-    drawStroke(
-        view,
-        [x1 - 0.034, y + 0.030, z],
-        0.020,
-        0.006,
-        color,
-        -Math.PI / 5
-    );
-
-    drawStroke(
-        view,
-        [x1 - 0.030, y - 0.020, z],
-        0.006,
-        0.035,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x1 - 0.006, y - 0.052, z],
-        0.035,
-        0.006,
-        color
-    );
-
-    // 右上部分
-    drawStroke(
-        view,
-        [x1 + 0.018, y + 0.042, z],
-        0.030,
-        0.006,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x1 + 0.018, y + 0.012, z],
-        0.030,
-        0.006,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x1 + 0.018, y - 0.018, z],
-        0.030,
-        0.006,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x1 - 0.008, y + 0.012, z],
-        0.006,
-        0.036,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x1 + 0.044, y + 0.012, z],
-        0.006,
-        0.036,
-        color
-    );
-
-
-    // ----------------------------
-    // 「加」風の簡易線画（右側）
-    // ----------------------------
-    const x2 = center[0] + 0.070;
-
-    // 力
-    drawStroke(
-        view,
-        [x2 - 0.034, y + 0.028, z],
-        0.032,
-        0.006,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x2 - 0.014, y - 0.004, z],
-        0.006,
-        0.038,
-        color,
-        0.05
-    );
-
-    drawStroke(
-        view,
-        [x2 - 0.038, y - 0.018, z],
-        0.028,
-        0.006,
-        color,
-        -0.12
-    );
-
-    // 口
-    drawStroke(
-        view,
-        [x2 + 0.038, y + 0.026, z],
-        0.025,
-        0.006,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x2 + 0.038, y - 0.030, z],
-        0.025,
-        0.006,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x2 + 0.014, y - 0.002, z],
-        0.006,
-        0.034,
-        color
-    );
-
-    drawStroke(
-        view,
-        [x2 + 0.062, y - 0.002, z],
-        0.006,
-        0.034,
-        color
-    );
-}
-
 function drawAddButton(view) {
     const isHover =
         hoverTarget &&
@@ -2280,12 +2553,11 @@ function drawAddButton(view) {
             ? [0.24, 0.30, 0.26, 1.0]
             : [0.10, 0.16, 0.12, 1.0];
 
-    const textColor =
+    const frameColor =
         isHover
             ? COLORS.white
             : COLORS.green;
 
-    // 横長のボタン背景
     drawShape(
         view,
         shapeMatrix(
@@ -2297,20 +2569,24 @@ function drawAddButton(view) {
         backgroundColor
     );
 
-    // 枠
     drawFrame(
         view,
         ADD_CENTER,
         0.115,
-        textColor,
+        frameColor,
         0.030
     );
 
-    // 「追加」文字
-    drawAddJapaneseText(
+    drawTexturedQuad(
         view,
-        ADD_CENTER,
-        textColor
+        [
+            ADD_CENTER[0],
+            ADD_CENTER[1],
+            ADD_CENTER[2] + 0.060
+        ],
+        0.145,
+        0.060,
+        addTextTexture
     );
 }
 
@@ -3047,7 +3323,22 @@ xrButton.addEventListener(
                 );
 
             program = createProgram();
+            textProgram = createTextProgram();
+
             createGeometry();
+            createTextQuadGeometry();
+
+            addTextTexture =
+                createJapaneseTextTexture(
+                    "追加",
+                    {
+                        width: 512,
+                        height: 256,
+                        fontSize: 128,
+                        color: "#ffffff"
+                    }
+                );
+
             gl.enable(gl.DEPTH_TEST);
 
             updateTaskState();
