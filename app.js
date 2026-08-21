@@ -26,18 +26,38 @@ const COLORS = {
 };
 
 // ==================================================
-// 問題設定
-// 今回の問題：青い球体を2個、ゴールへ入れる
+// ランダム問題設定
+// 色3種 × 形状3種 × 個数2種 = 18通り
 // ==================================================
 
-const TASK = {
+const TASK_COLORS = ["red", "blue", "green"];
+const TASK_SHAPES = ["cube", "sphere", "tetra"];
+const TASK_COUNTS = [1, 2];
+
+const COLOR_LABELS = {
+    red: "赤",
+    blue: "青",
+    green: "緑"
+};
+
+const SHAPE_LABELS = {
+    cube: "立方体",
+    sphere: "球体",
+    tetra: "三角錐"
+};
+
+let currentTask = {
     colorName: "blue",
     shape: "sphere",
     requiredCount: 2
 };
 
+let previousTaskKey = "";
 let gameCleared = false;
 let correctCount = 0;
+
+const NEXT_TASK_CENTER = [0.0, 0.27, -1.28];
+const NEXT_TASK_HALF = 0.14;
 
 // ==================================================
 // 初期オブジェクト：1個だけ
@@ -483,6 +503,28 @@ function findNearestTarget(origin, direction) {
         };
     }
 
+    if (gameCleared) {
+        const nextDistance = rayBoxDistance(
+            origin,
+            direction,
+            NEXT_TASK_CENTER,
+            NEXT_TASK_HALF
+        );
+
+        if (
+            nextDistance !== null &&
+            (
+                result === null ||
+                nextDistance < result.distance
+            )
+        ) {
+            result = {
+                type: "nextTask",
+                distance: nextDistance
+            };
+        }
+    }
+
     const panel = getPanelLayout();
 
     if (panel) {
@@ -828,8 +870,8 @@ function updateTaskState() {
 
     for (const box of boxes) {
         if (
-            box.colorName === TASK.colorName &&
-            box.shape === TASK.shape &&
+            box.colorName === currentTask.colorName &&
+            box.shape === currentTask.shape &&
             isInsideGoal(box)
         ) {
             correctCount++;
@@ -838,21 +880,25 @@ function updateTaskState() {
 
     gameCleared =
         correctCount >=
-        TASK.requiredCount;
+        currentTask.requiredCount;
+
+    const remaining = Math.max(
+        0,
+        currentTask.requiredCount - correctCount
+    );
 
     if (gameCleared) {
         status.textContent =
-            "CLEAR! 青い球体を2個、枠の中に置けました。";
+            "CLEAR! 指定されたオブジェクトを配置できました。次の問題ボタンを押してください。";
     } else {
-        const remaining =
-            TASK.requiredCount -
-            correctCount;
-
         status.textContent =
-            "問題：青い球体を2個、青い枠の中へ入れてください。残り " +
+            getTaskText() +
+            " 残り " +
             remaining +
             " 個です。";
     }
+
+    updateHtmlTaskDisplay();
 }
 
 // ==================================================
@@ -863,7 +909,7 @@ function updateTaskState() {
 function drawGoal(view) {
     const color = gameCleared
         ? COLORS.green
-        : COLORS.blue;
+        : COLORS[currentTask.colorName];
 
     const x = GOAL_CENTER[0];
     const y = GOAL_CENTER[1];
@@ -941,6 +987,22 @@ function drawXMark(view, center, color) {
             0.010,
             0.020,
             -Math.PI / 4
+        ),
+        color
+    );
+}
+
+function drawDigitOne(view, center, color) {
+    const h = 0.060;
+    const t = 0.010;
+
+    drawShape(
+        view,
+        shapeMatrix(
+            [center[0], center[1], center[2]],
+            t,
+            h,
+            0.020
         ),
         color
     );
@@ -1033,6 +1095,60 @@ function drawCheckMark(view, center, color) {
     );
 }
 
+function drawNextTaskButton(view) {
+    const hover =
+        hoverTarget &&
+        hoverTarget.type === "nextTask";
+
+    const buttonColor = hover
+        ? COLORS.white
+        : COLORS.green;
+
+    drawShape(
+        view,
+        shapeMatrix(
+            NEXT_TASK_CENTER,
+            0.15,
+            0.07,
+            0.025
+        ),
+        [0.08, 0.25, 0.10, 1.0]
+    );
+
+    // 「>」を2本の斜線で表現
+    drawShape(
+        view,
+        shapeMatrix(
+            [
+                NEXT_TASK_CENTER[0] - 0.015,
+                NEXT_TASK_CENTER[1] + 0.025,
+                NEXT_TASK_CENTER[2] + 0.04
+            ],
+            0.050,
+            0.010,
+            0.018,
+            -Math.PI / 4
+        ),
+        buttonColor
+    );
+
+    drawShape(
+        view,
+        shapeMatrix(
+            [
+                NEXT_TASK_CENTER[0] - 0.015,
+                NEXT_TASK_CENTER[1] - 0.025,
+                NEXT_TASK_CENTER[2] + 0.04
+            ],
+            0.050,
+            0.010,
+            0.018,
+            Math.PI / 4
+        ),
+        buttonColor
+    );
+}
+
 function drawTaskPanel(view) {
     const panelColor = gameCleared
         ? [0.08, 0.25, 0.10, 1.0]
@@ -1053,18 +1169,20 @@ function drawTaskPanel(view) {
         drawCheckMark(
             view,
             [
-                TASK_PANEL_CENTER[0],
+                TASK_PANEL_CENTER[0] - 0.08,
                 TASK_PANEL_CENTER[1],
                 TASK_PANEL_CENTER[2] + 0.04
             ],
             COLORS.green
         );
+
+        drawNextTaskButton(view);
         return;
     }
 
     drawMesh(
         view,
-        meshes.sphere,
+        meshes[currentTask.shape],
         modelMatrix(
             [
                 TASK_PANEL_CENTER[0] - 0.15,
@@ -1072,10 +1190,10 @@ function drawTaskPanel(view) {
                 TASK_PANEL_CENTER[2] + 0.04
             ],
             0.060,
-            0,
-            0
+            -0.20,
+            0.30
         ),
-        COLORS.blue
+        COLORS[currentTask.colorName]
     );
 
     drawXMark(
@@ -1088,15 +1206,25 @@ function drawTaskPanel(view) {
         COLORS.white
     );
 
-    drawDigitTwo(
-        view,
-        [
-            TASK_PANEL_CENTER[0] + 0.16,
-            TASK_PANEL_CENTER[1],
-            TASK_PANEL_CENTER[2] + 0.04
-        ],
-        COLORS.white
-    );
+    const numberCenter = [
+        TASK_PANEL_CENTER[0] + 0.16,
+        TASK_PANEL_CENTER[1],
+        TASK_PANEL_CENTER[2] + 0.04
+    ];
+
+    if (currentTask.requiredCount === 1) {
+        drawDigitOne(
+            view,
+            numberCenter,
+            COLORS.white
+        );
+    } else {
+        drawDigitTwo(
+            view,
+            numberCenter,
+            COLORS.white
+        );
+    }
 }
 
 // ==================================================
@@ -1618,6 +1746,197 @@ function drawRay(view, origin, direction) {
 // 選択中オブジェクト削除
 // ==================================================
 
+function getTaskKey(task) {
+    return (
+        task.colorName +
+        "-" +
+        task.shape +
+        "-" +
+        task.requiredCount
+    );
+}
+
+function getTaskText() {
+    return (
+        "問題：" +
+        COLOR_LABELS[currentTask.colorName] +
+        "の" +
+        SHAPE_LABELS[currentTask.shape] +
+        "を" +
+        currentTask.requiredCount +
+        "個、同じ色の枠の中へ入れてください。"
+    );
+}
+
+function createRandomTask() {
+    let task = null;
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+        task = {
+            colorName:
+                TASK_COLORS[
+                    Math.floor(
+                        Math.random() *
+                        TASK_COLORS.length
+                    )
+                ],
+
+            shape:
+                TASK_SHAPES[
+                    Math.floor(
+                        Math.random() *
+                        TASK_SHAPES.length
+                    )
+                ],
+
+            requiredCount:
+                TASK_COUNTS[
+                    Math.floor(
+                        Math.random() *
+                        TASK_COUNTS.length
+                    )
+                ]
+        };
+
+        if (
+            getTaskKey(task) !==
+            previousTaskKey
+        ) {
+            break;
+        }
+    }
+
+    previousTaskKey =
+        getTaskKey(task);
+
+    return task;
+}
+
+function resetObjectsForTask() {
+    boxes = [
+        {
+            center: [0.0, 0.0, -1.5],
+            shape: "cube",
+            colorName: "blue",
+            color: COLORS.blue,
+            scale: 1.0,
+            rotationX: 0,
+            rotationY: 0
+        }
+    ];
+
+    selectedBoxIndex = null;
+
+    isDragging = false;
+    activeInputSource = null;
+    activeBoxIndex = null;
+    pressStartCenter = null;
+
+    isRotating = false;
+    rotationMode = null;
+    rotationInputSource = null;
+}
+
+function ensureHtmlTaskDisplay() {
+    let taskBox =
+        document.getElementById(
+            "taskDisplay"
+        );
+
+    if (!taskBox) {
+        taskBox =
+            document.createElement(
+                "div"
+            );
+
+        taskBox.id =
+            "taskDisplay";
+
+        taskBox.style.maxWidth =
+            "760px";
+
+        taskBox.style.margin =
+            "0 auto 24px auto";
+
+        taskBox.style.padding =
+            "18px 22px";
+
+        taskBox.style.border =
+            "2px solid #4b5563";
+
+        taskBox.style.borderRadius =
+            "12px";
+
+        taskBox.style.fontSize =
+            "24px";
+
+        taskBox.style.fontWeight =
+            "700";
+
+        taskBox.style.lineHeight =
+            "1.5";
+
+        taskBox.style.background =
+            "#f3f4f6";
+
+        taskBox.style.color =
+            "#111827";
+
+        if (xrButton.parentNode) {
+            xrButton.parentNode.insertBefore(
+                taskBox,
+                xrButton
+            );
+        }
+    }
+
+    return taskBox;
+}
+
+function updateHtmlTaskDisplay() {
+    const taskBox =
+        ensureHtmlTaskDisplay();
+
+    if (!taskBox) {
+        return;
+    }
+
+    if (gameCleared) {
+        taskBox.textContent =
+            "CLEAR! 次の問題へ進めます。";
+
+        taskBox.style.borderColor =
+            "#16a34a";
+
+        return;
+    }
+
+    taskBox.textContent =
+        getTaskText();
+
+    const colorMap = {
+        red: "#dc2626",
+        blue: "#2563eb",
+        green: "#16a34a"
+    };
+
+    taskBox.style.borderColor =
+        colorMap[
+            currentTask.colorName
+        ];
+}
+
+function startNewTask() {
+    currentTask =
+        createRandomTask();
+
+    gameCleared = false;
+    correctCount = 0;
+
+    resetObjectsForTask();
+    updateTaskState();
+}
+
 function deleteSelectedObject() {
     if (
         selectedBoxIndex === null ||
@@ -1951,6 +2270,14 @@ xrButton.addEventListener(
                         return;
                     }
 
+                    if (target.type === "nextTask") {
+                        if (gameCleared) {
+                            startNewTask();
+                        }
+
+                        return;
+                    }
+
                     if (target.type === "deleteObject") {
                         deleteSelectedObject();
                         return;
@@ -2214,6 +2541,8 @@ xrButton.addEventListener(
 
                     xrButton.textContent =
                         "MR体験を開始";
+
+                    updateHtmlTaskDisplay();
                 }
             );
 
@@ -2238,4 +2567,8 @@ xrButton.addEventListener(
 // 初期化
 // ==================================================
 
+currentTask =
+    createRandomTask();
+
+updateTaskState();
 checkXR();
