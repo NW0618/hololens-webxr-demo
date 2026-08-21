@@ -11,6 +11,7 @@ let rayBuffer = null;
 
 let textProgram = null;
 let addTextTexture = null;
+let deleteTextTexture = null;
 let textQuadPositionBuffer = null;
 let textQuadUvBuffer = null;
 let textQuadIndexBuffer = null;
@@ -130,6 +131,10 @@ const TASK_PANEL_CENTER = [0.22, -0.48, -1.32];
 
 const ADD_CENTER = [0.72, -0.48, -1.20];
 const ADD_HALF = 0.20;
+
+// 「追加」の右側に独立した削除ボタン
+const DELETE_CENTER = [1.18, -0.48, -1.20];
+const DELETE_HALF = 0.20;
 
 // ==================================================
 // 移動状態
@@ -977,6 +982,30 @@ function findNearestTarget(origin, direction) {
         };
     }
 
+    // 独立した「削除」ボタン
+    const deleteDistance = rayBoxDistance(
+        origin,
+        direction,
+        DELETE_CENTER,
+        DELETE_HALF
+    );
+
+    if (
+        deleteDistance !== null &&
+        selectedBoxIndex !== null &&
+        boxes[selectedBoxIndex]
+    ) {
+        if (
+            result === null ||
+            deleteDistance < result.distance
+        ) {
+            result = {
+                type: "deleteObject",
+                distance: deleteDistance
+            };
+        }
+    }
+
     if (gameCleared) {
         const nextDistance = rayBoxDistance(
             origin,
@@ -1013,7 +1042,7 @@ function findNearestTarget(origin, direction) {
             { type: "shapeCube", center: panel.cube },
             { type: "shapeSphere", center: panel.sphere },
             { type: "shapeTetra", center: panel.tetra },
-            { type: "deleteObject", center: panel.deleteButton }
+            { type: "closePanel", center: panel.deleteButton }
         ];
 
         for (const control of controls) {
@@ -2351,40 +2380,57 @@ function drawShapeIcon(
 // ==================================================
 
 function drawDeleteButton(view, center) {
+    const isHover =
+        hoverTarget &&
+        hoverTarget.type === "closePanel";
+
+    const backgroundColor =
+        isHover
+            ? [0.40, 0.40, 0.44, 1.0]
+            : [0.20, 0.20, 0.24, 1.0];
+
     drawShape(
         view,
-        shapeMatrix(center, 0.080, 0.080, 0.030),
-        COLORS.red
+        shapeMatrix(
+            center,
+            0.080,
+            0.080,
+            0.030
+        ),
+        backgroundColor
     );
 
-    const z = center[2] + 0.040;
+    const z =
+        center[2] + 0.040;
+
+    const xColor =
+        isHover
+            ? COLORS.white
+            : COLORS.gray;
 
     drawShape(
         view,
         shapeMatrix(
             [center[0], center[1], z],
-            0.065, 0.012, 0.012,
+            0.065,
+            0.012,
+            0.012,
             Math.PI / 4
         ),
-        COLORS.white
+        xColor
     );
 
     drawShape(
         view,
         shapeMatrix(
             [center[0], center[1], z],
-            0.065, 0.012, 0.012,
+            0.065,
+            0.012,
+            0.012,
             -Math.PI / 4
         ),
-        COLORS.white
+        xColor
     );
-
-    if (
-        hoverTarget &&
-        hoverTarget.type === "deleteObject"
-    ) {
-        drawSelectionFrame(view, center, COLORS.gray);
-    }
 }
 
 // ==================================================
@@ -2409,7 +2455,7 @@ function drawControlPanel(view) {
         COLORS.panel
     );
 
-    // 右上の赤い×削除ボタン
+    // 右上の×は操作パネルを閉じるボタン
     drawDeleteButton(view, panel.deleteButton);
 
     drawMinus(
@@ -2593,6 +2639,70 @@ function drawAddButton(view) {
 // ==================================================
 // レイ
 // ==================================================
+
+
+// ==================================================
+// 独立した「削除」ボタン
+// 選択中オブジェクトがある時だけ有効
+// ==================================================
+
+function drawStandaloneDeleteButton(view) {
+    const hasSelection =
+        selectedBoxIndex !== null &&
+        boxes[selectedBoxIndex];
+
+    const isHover =
+        hasSelection &&
+        hoverTarget &&
+        hoverTarget.type === "deleteObject";
+
+    const backgroundColor =
+        !hasSelection
+            ? [0.10, 0.10, 0.10, 0.55]
+            : isHover
+                ? [0.50, 0.12, 0.12, 1.0]
+                : [0.26, 0.06, 0.06, 1.0];
+
+    const frameColor =
+        !hasSelection
+            ? COLORS.gray
+            : isHover
+                ? COLORS.white
+                : COLORS.red;
+
+    drawShape(
+        view,
+        shapeMatrix(
+            DELETE_CENTER,
+            0.20,
+            0.11,
+            0.025
+        ),
+        backgroundColor
+    );
+
+    drawFrame(
+        view,
+        DELETE_CENTER,
+        0.115,
+        frameColor,
+        0.030
+    );
+
+    if (deleteTextTexture) {
+        drawTexturedQuad(
+            view,
+            [
+                DELETE_CENTER[0],
+                DELETE_CENTER[1],
+                DELETE_CENTER[2] + 0.060
+            ],
+            0.145,
+            0.060,
+            deleteTextTexture
+        );
+    }
+}
 
 function drawRay(view, origin, direction) {
     const rayLength = 2.5;
@@ -3215,6 +3325,7 @@ function onXRFrame(time, frame) {
         drawGoal(view);
         drawObjects(view);
         drawAddButton(view);
+        drawStandaloneDeleteButton(view);
         drawTaskPanel(view);
         drawProgressPanel(view);
         drawTimerPanel(view);
@@ -3339,6 +3450,17 @@ xrButton.addEventListener(
                     }
                 );
 
+            deleteTextTexture =
+                createJapaneseTextTexture(
+                    "削除",
+                    {
+                        width: 512,
+                        height: 256,
+                        fontSize: 128,
+                        color: "#ffffff"
+                    }
+                );
+
             gl.enable(gl.DEPTH_TEST);
 
             updateTaskState();
@@ -3385,6 +3507,12 @@ xrButton.addEventListener(
                             startNewTask();
                         }
 
+                        return;
+                    }
+
+                    if (target.type === "closePanel") {
+                        // 調整パネルだけ閉じる。オブジェクトは削除しない。
+                        selectedBoxIndex = null;
                         return;
                     }
 
