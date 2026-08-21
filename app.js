@@ -1404,6 +1404,23 @@ function updateTaskState() {
         correctCount
     );
 
+    // 正解した瞬間に選択を解除し、調整パネルを閉じる
+    if (
+        gameCleared &&
+        !wasCleared
+    ) {
+        selectedBoxIndex = null;
+
+        isDragging = false;
+        activeInputSource = null;
+        activeBoxIndex = null;
+        pressStartCenter = null;
+
+        isRotating = false;
+        rotationMode = null;
+        rotationInputSource = null;
+    }
+
     if (
         gameCleared &&
         !wasCleared &&
@@ -1882,9 +1899,9 @@ function drawTaskPanel(view) {
         drawCheckMark(
             view,
             [
-                TASK_PANEL_CENTER[0],
-                TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + 0.04
+                -0.05,
+                0.0,
+                -1.44
             ],
             GOAL_CLEAR_COLOR
         );
@@ -1892,12 +1909,13 @@ function drawTaskPanel(view) {
     }
 
     if (gameCleared) {
+        // 正解チェックは初期オブジェクトと同じ位置に表示
         drawCheckMark(
             view,
             [
-                TASK_PANEL_CENTER[0] - 0.08,
-                TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + 0.04
+                -0.05,
+                0.0,
+                -1.44
             ],
             GOAL_CLEAR_COLOR
         );
@@ -2859,7 +2877,7 @@ function buildTaskSequence() {
 function resetObjectsForTask() {
     boxes = [
         {
-            center: [0.0, 0.0, -1.5],
+            center: [-0.05, 0.0, -1.5],
             shape: "cube",
             colorName: "blue",
             color: COLORS.blue,
