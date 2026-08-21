@@ -27,7 +27,7 @@ const COLORS = {
 
 // ==================================================
 // ランダム問題設定
-// 色3種 × 形状3種 × 個数2種 = 18通り
+// 練習1問 + 本番5問
 // ==================================================
 
 const TASK_COLORS = ["red", "blue", "green"];
@@ -46,18 +46,42 @@ const SHAPE_LABELS = {
     tetra: "三角錐"
 };
 
-let currentTask = {
+// ゴール枠は問題色と切り離して固定色にする
+const GOAL_NORMAL_COLOR = [0.70, 0.35, 1.00, 1.0];
+const GOAL_CLEAR_COLOR = [1.00, 0.72, 0.10, 1.0];
+
+const PRACTICE_TASK = {
     colorName: "blue",
     shape: "sphere",
-    requiredCount: 2
+    requiredCount: 1
 };
 
-let previousTaskKey = "";
+let taskSequence = [];
+let currentQuestionIndex = 0; // 0=練習, 1～5=本番
+let currentTask = PRACTICE_TASK;
+
 let gameCleared = false;
 let correctCount = 0;
 
+let countdownActive = false;
+let countdownStartTime = 0;
+
+let timerRunning = false;
+let timedStartTime = 0;
+let currentElapsedMs = 0;
+let finalElapsedMs = 0;
+
+let finishedAll = false;
+let finishEffectStartTime = 0;
+
+const TOTAL_TIMED_QUESTIONS = 5;
+const COUNTDOWN_MS = 3000;
+
 const NEXT_TASK_CENTER = [0.0, 0.27, -1.28];
 const NEXT_TASK_HALF = 0.14;
+
+const TIMER_PANEL_CENTER = [0.0, 0.88, -1.30];
+const PROGRESS_PANEL_CENTER = [-0.44, 0.88, -1.30];
 
 // ==================================================
 // 初期オブジェクト：1個だけ
@@ -489,6 +513,13 @@ function getPanelLayout() {
 function findNearestTarget(origin, direction) {
     let result = null;
 
+    if (
+        countdownActive ||
+        finishedAll
+    ) {
+        return null;
+    }
+
     const addDistance = rayBoxDistance(
         origin,
         direction,
@@ -866,17 +897,30 @@ function isInsideGoal(box) {
 }
 
 function updateTaskState() {
+    if (
+        countdownActive ||
+        finishedAll
+    ) {
+        updateHtmlTaskDisplay();
+        return;
+    }
+
     correctCount = 0;
 
     for (const box of boxes) {
         if (
-            box.colorName === currentTask.colorName &&
-            box.shape === currentTask.shape &&
+            box.colorName ===
+                currentTask.colorName &&
+            box.shape ===
+                currentTask.shape &&
             isInsideGoal(box)
         ) {
             correctCount++;
         }
     }
+
+    const wasCleared =
+        gameCleared;
 
     gameCleared =
         correctCount >=
@@ -884,12 +928,27 @@ function updateTaskState() {
 
     const remaining = Math.max(
         0,
-        currentTask.requiredCount - correctCount
+        currentTask.requiredCount -
+        correctCount
     );
+
+    if (
+        gameCleared &&
+        !wasCleared &&
+        currentQuestionIndex ===
+            TOTAL_TIMED_QUESTIONS
+    ) {
+        completeAllQuestions(
+            performance.now()
+        );
+        return;
+    }
 
     if (gameCleared) {
         status.textContent =
-            "CLEAR! 指定されたオブジェクトを配置できました。次の問題ボタンを押してください。";
+            currentQuestionIndex === 0
+                ? "練習CLEAR! 次へ進むと本番開始です。"
+                : "CLEAR! 次の問題へ進んでください。";
     } else {
         status.textContent =
             getTaskText() +
@@ -907,9 +966,36 @@ function updateTaskState() {
 // ==================================================
 
 function drawGoal(view) {
-    const color = gameCleared
-        ? COLORS.green
-        : COLORS[currentTask.colorName];
+    let color =
+        gameCleared
+            ? GOAL_CLEAR_COLOR
+            : GOAL_NORMAL_COLOR;
+
+    if (
+        finishedAll &&
+        finishEffectStartTime > 0
+    ) {
+        const pulse =
+            0.65 +
+            0.35 *
+            Math.abs(
+                Math.sin(
+                    (
+                        performance.now() -
+                        finishEffectStartTime
+                    ) /
+                    180
+                )
+            );
+
+        color = [
+            1.0,
+            0.55 +
+                0.35 * pulse,
+            0.08,
+            1.0
+        ];
+    }
 
     const x = GOAL_CENTER[0];
     const y = GOAL_CENTER[1];
@@ -1069,6 +1155,158 @@ function drawDigitTwo(view, center, color) {
     );
 }
 
+function drawSevenSegmentDigit(
+    view,
+    center,
+    digit,
+    color,
+    scale = 1.0
+) {
+    const map = {
+        "0": ["a", "b", "c", "d", "e", "f"],
+        "1": ["b", "c"],
+        "2": ["a", "b", "g", "e", "d"],
+        "3": ["a", "b", "c", "d", "g"],
+        "4": ["f", "g", "b", "c"],
+        "5": ["a", "f", "g", "c", "d"],
+        "6": ["a", "f", "g", "e", "c", "d"],
+        "7": ["a", "b", "c"],
+        "8": ["a", "b", "c", "d", "e", "f", "g"],
+        "9": ["a", "b", "c", "d", "f", "g"]
+    };
+
+    const segments =
+        map[String(digit)] || [];
+
+    const w = 0.035 * scale;
+    const h = 0.045 * scale;
+    const t = 0.006 * scale;
+    const z = center[2];
+
+    const defs = {
+        a: [center[0], center[1] + h, z, w, t],
+        g: [center[0], center[1], z, w, t],
+        d: [center[0], center[1] - h, z, w, t],
+        f: [center[0] - w, center[1] + h / 2, z, t, h / 2],
+        b: [center[0] + w, center[1] + h / 2, z, t, h / 2],
+        e: [center[0] - w, center[1] - h / 2, z, t, h / 2],
+        c: [center[0] + w, center[1] - h / 2, z, t, h / 2]
+    };
+
+    for (const key of segments) {
+        const d = defs[key];
+
+        drawShape(
+            view,
+            shapeMatrix(
+                [d[0], d[1], d[2]],
+                d[3],
+                d[4],
+                0.014
+            ),
+            color
+        );
+    }
+}
+
+function drawSlash(
+    view,
+    center,
+    color,
+    scale = 1.0
+) {
+    drawShape(
+        view,
+        shapeMatrix(
+            center,
+            0.045 * scale,
+            0.006 * scale,
+            0.014,
+            Math.PI / 3
+        ),
+        color
+    );
+}
+
+function drawDecimalPoint(
+    view,
+    center,
+    color,
+    scale = 1.0
+) {
+    drawShape(
+        view,
+        shapeMatrix(
+            center,
+            0.008 * scale,
+            0.008 * scale,
+            0.014
+        ),
+        color
+    );
+}
+
+function drawNumberString(
+    view,
+    textValue,
+    center,
+    color,
+    scale = 1.0,
+    spacing = 0.090
+) {
+    const chars =
+        String(textValue).split("");
+
+    const totalWidth =
+        (chars.length - 1) *
+        spacing *
+        scale;
+
+    let x =
+        center[0] -
+        totalWidth / 2;
+
+    for (const ch of chars) {
+        const pos = [
+            x,
+            center[1],
+            center[2]
+        ];
+
+        if (/[0-9]/.test(ch)) {
+            drawSevenSegmentDigit(
+                view,
+                pos,
+                ch,
+                color,
+                scale
+            );
+        } else if (ch === "/") {
+            drawSlash(
+                view,
+                pos,
+                color,
+                scale
+            );
+        } else if (ch === ".") {
+            drawDecimalPoint(
+                view,
+                [
+                    x,
+                    center[1] - 0.040 * scale,
+                    center[2]
+                ],
+                color,
+                scale
+            );
+        }
+
+        x +=
+            spacing *
+            scale;
+    }
+}
+
 function drawCheckMark(view, center, color) {
     drawShape(
         view,
@@ -1150,9 +1388,12 @@ function drawNextTaskButton(view) {
 }
 
 function drawTaskPanel(view) {
-    const panelColor = gameCleared
-        ? [0.08, 0.25, 0.10, 1.0]
-        : COLORS.panel;
+    const panelColor =
+        finishedAll
+            ? [0.22, 0.14, 0.02, 1.0]
+            : gameCleared
+                ? [0.20, 0.12, 0.02, 1.0]
+                : COLORS.panel;
 
     drawShape(
         view,
@@ -1165,6 +1406,19 @@ function drawTaskPanel(view) {
         panelColor
     );
 
+    if (finishedAll) {
+        drawCheckMark(
+            view,
+            [
+                TASK_PANEL_CENTER[0],
+                TASK_PANEL_CENTER[1],
+                TASK_PANEL_CENTER[2] + 0.04
+            ],
+            GOAL_CLEAR_COLOR
+        );
+        return;
+    }
+
     if (gameCleared) {
         drawCheckMark(
             view,
@@ -1173,7 +1427,7 @@ function drawTaskPanel(view) {
                 TASK_PANEL_CENTER[1],
                 TASK_PANEL_CENTER[2] + 0.04
             ],
-            COLORS.green
+            GOAL_CLEAR_COLOR
         );
 
         drawNextTaskButton(view);
@@ -1206,30 +1460,224 @@ function drawTaskPanel(view) {
         COLORS.white
     );
 
-    const numberCenter = [
-        TASK_PANEL_CENTER[0] + 0.16,
-        TASK_PANEL_CENTER[1],
-        TASK_PANEL_CENTER[2] + 0.04
-    ];
-
-    if (currentTask.requiredCount === 1) {
-        drawDigitOne(
-            view,
-            numberCenter,
-            COLORS.white
-        );
-    } else {
-        drawDigitTwo(
-            view,
-            numberCenter,
-            COLORS.white
-        );
-    }
+    drawSevenSegmentDigit(
+        view,
+        [
+            TASK_PANEL_CENTER[0] + 0.16,
+            TASK_PANEL_CENTER[1],
+            TASK_PANEL_CENTER[2] + 0.04
+        ],
+        currentTask.requiredCount,
+        COLORS.white,
+        1.0
+    );
 }
 
 // ==================================================
 // ＋ / －
 // ==================================================
+
+function drawProgressPanel(view) {
+    if (
+        currentQuestionIndex === 0 ||
+        countdownActive ||
+        finishedAll
+    ) {
+        return;
+    }
+
+    drawShape(
+        view,
+        shapeMatrix(
+            PROGRESS_PANEL_CENTER,
+            0.17,
+            0.08,
+            0.018
+        ),
+        COLORS.panel
+    );
+
+    drawNumberString(
+        view,
+        currentQuestionIndex +
+        "/" +
+        TOTAL_TIMED_QUESTIONS,
+        [
+            PROGRESS_PANEL_CENTER[0],
+            PROGRESS_PANEL_CENTER[1],
+            PROGRESS_PANEL_CENTER[2] + 0.04
+        ],
+        COLORS.white,
+        0.85,
+        0.080
+    );
+}
+
+function drawTimerPanel(view) {
+    if (
+        currentQuestionIndex === 0 &&
+        !countdownActive &&
+        !finishedAll
+    ) {
+        return;
+    }
+
+    const elapsedMs =
+        getDisplayedElapsedMs();
+
+    const timeText =
+        formatTimeSeconds(
+            elapsedMs
+        );
+
+    drawShape(
+        view,
+        shapeMatrix(
+            TIMER_PANEL_CENTER,
+            0.23,
+            0.08,
+            0.018
+        ),
+        finishedAll
+            ? [0.22, 0.14, 0.02, 1.0]
+            : COLORS.panel
+    );
+
+    drawNumberString(
+        view,
+        timeText,
+        [
+            TIMER_PANEL_CENTER[0],
+            TIMER_PANEL_CENTER[1],
+            TIMER_PANEL_CENTER[2] + 0.04
+        ],
+        finishedAll
+            ? GOAL_CLEAR_COLOR
+            : COLORS.white,
+        0.70,
+        0.073
+    );
+}
+
+function drawCountdown(view, now) {
+    if (!countdownActive) {
+        return;
+    }
+
+    const elapsed =
+        now -
+        countdownStartTime;
+
+    const remaining =
+        Math.max(
+            0,
+            COUNTDOWN_MS -
+            elapsed
+        );
+
+    const number =
+        Math.max(
+            1,
+            Math.ceil(
+                remaining /
+                1000
+            )
+        );
+
+    drawShape(
+        view,
+        shapeMatrix(
+            [0.0, 0.12, -1.05],
+            0.18,
+            0.18,
+            0.025
+        ),
+        [0.12, 0.06, 0.20, 0.92]
+    );
+
+    drawSevenSegmentDigit(
+        view,
+        [0.0, 0.12, -1.00],
+        number,
+        COLORS.white,
+        2.2
+    );
+}
+
+function drawFinishEffect(view, now) {
+    if (!finishedAll) {
+        return;
+    }
+
+    const elapsed =
+        now -
+        finishEffectStartTime;
+
+    const effectDuration =
+        3200;
+
+    if (
+        elapsed <=
+        effectDuration
+    ) {
+        const t =
+            elapsed /
+            effectDuration;
+
+        for (
+            let i = 0;
+            i < 18;
+            i++
+        ) {
+            const angle =
+                (
+                    Math.PI * 2 *
+                    i /
+                    18
+                ) +
+                elapsed /
+                450;
+
+            const radius =
+                0.18 +
+                0.85 * t;
+
+            const yWave =
+                Math.sin(
+                    angle * 2 +
+                    elapsed /
+                    250
+                ) *
+                0.18;
+
+            drawShape(
+                view,
+                shapeMatrix(
+                    [
+                        Math.cos(angle) *
+                            radius,
+                        0.18 +
+                            yWave,
+                        -1.08 +
+                            Math.sin(angle) *
+                            0.12
+                    ],
+                    0.025,
+                    0.025,
+                    0.025,
+                    angle
+                ),
+                GOAL_CLEAR_COLOR
+            );
+        }
+    }
+
+    drawCheckMark(
+        view,
+        [0.0, 0.12, -1.00],
+        GOAL_CLEAR_COLOR
+    );
+}
 
 function drawPlus(view, center, color) {
     drawShape(
@@ -1757,21 +2205,30 @@ function getTaskKey(task) {
 }
 
 function getTaskText() {
+    const prefix =
+        currentQuestionIndex === 0
+            ? "練習："
+            : "本番 " +
+              currentQuestionIndex +
+              "/" +
+              TOTAL_TIMED_QUESTIONS +
+              "：";
+
     return (
-        "問題：" +
+        prefix +
         COLOR_LABELS[currentTask.colorName] +
         "の" +
         SHAPE_LABELS[currentTask.shape] +
         "を" +
         currentTask.requiredCount +
-        "個、同じ色の枠の中へ入れてください。"
+        "個、枠の中へ入れてください。"
     );
 }
 
-function createRandomTask() {
+function createRandomTask(excludedKeys = new Set()) {
     let task = null;
 
-    for (let attempt = 0; attempt < 20; attempt++) {
+    for (let attempt = 0; attempt < 50; attempt++) {
         task = {
             colorName:
                 TASK_COLORS[
@@ -1799,17 +2256,43 @@ function createRandomTask() {
         };
 
         if (
-            getTaskKey(task) !==
-            previousTaskKey
+            !excludedKeys.has(
+                getTaskKey(task)
+            )
         ) {
             break;
         }
     }
 
-    previousTaskKey =
-        getTaskKey(task);
-
     return task;
+}
+
+function buildTaskSequence() {
+    const sequence = [
+        PRACTICE_TASK
+    ];
+
+    const usedKeys = new Set([
+        getTaskKey(PRACTICE_TASK)
+    ]);
+
+    for (
+        let i = 0;
+        i < TOTAL_TIMED_QUESTIONS;
+        i++
+    ) {
+        const task =
+            createRandomTask(
+                usedKeys
+            );
+
+        sequence.push(task);
+        usedKeys.add(
+            getTaskKey(task)
+        );
+    }
+
+    return sequence;
 }
 
 function resetObjectsForTask() {
@@ -1901,12 +2384,38 @@ function updateHtmlTaskDisplay() {
         return;
     }
 
-    if (gameCleared) {
+    if (finishedAll) {
         taskBox.textContent =
-            "CLEAR! 次の問題へ進めます。";
+            "COMPLETE! 本番5問の合計タイム：" +
+            formatTimeSeconds(
+                finalElapsedMs
+            ) +
+            " 秒";
 
         taskBox.style.borderColor =
-            "#16a34a";
+            "#d4a017";
+
+        return;
+    }
+
+    if (countdownActive) {
+        taskBox.textContent =
+            "本番開始までカウントダウン中です。";
+
+        taskBox.style.borderColor =
+            "#7c3aed";
+
+        return;
+    }
+
+    if (gameCleared) {
+        taskBox.textContent =
+            currentQuestionIndex === 0
+                ? "練習クリア！ 次へ進むと3秒カウントダウン後に本番開始です。"
+                : "CLEAR! 次の問題へ進んでください。";
+
+        taskBox.style.borderColor =
+            "#d4a017";
 
         return;
     }
@@ -1914,27 +2423,135 @@ function updateHtmlTaskDisplay() {
     taskBox.textContent =
         getTaskText();
 
-    const colorMap = {
-        red: "#dc2626",
-        blue: "#2563eb",
-        green: "#16a34a"
-    };
-
     taskBox.style.borderColor =
-        colorMap[
-            currentTask.colorName
-        ];
+        "#7c3aed";
 }
 
 function startNewTask() {
-    currentTask =
-        createRandomTask();
+    if (finishedAll) {
+        return;
+    }
 
-    gameCleared = false;
-    correctCount = 0;
+    if (
+        currentQuestionIndex === 0
+    ) {
+        currentQuestionIndex = 1;
+        currentTask =
+            taskSequence[
+                currentQuestionIndex
+            ];
 
-    resetObjectsForTask();
-    updateTaskState();
+        gameCleared = false;
+        correctCount = 0;
+
+        resetObjectsForTask();
+
+        countdownActive = true;
+        countdownStartTime =
+            performance.now();
+
+        timerRunning = false;
+        timedStartTime = 0;
+        currentElapsedMs = 0;
+
+        status.textContent =
+            "3秒後に本番を開始します。";
+
+        updateHtmlTaskDisplay();
+        return;
+    }
+
+    if (
+        currentQuestionIndex <
+        TOTAL_TIMED_QUESTIONS
+    ) {
+        currentQuestionIndex++;
+
+        currentTask =
+            taskSequence[
+                currentQuestionIndex
+            ];
+
+        gameCleared = false;
+        correctCount = 0;
+
+        resetObjectsForTask();
+        updateTaskState();
+    }
+}
+
+function formatTimeSeconds(ms) {
+    return (
+        ms / 1000
+    ).toFixed(1);
+}
+
+function getDisplayedElapsedMs() {
+    if (finishedAll) {
+        return finalElapsedMs;
+    }
+
+    if (
+        timerRunning &&
+        timedStartTime > 0
+    ) {
+        return (
+            performance.now() -
+            timedStartTime
+        );
+    }
+
+    return currentElapsedMs;
+}
+
+function updateCountdownState(now) {
+    if (!countdownActive) {
+        return;
+    }
+
+    const elapsed =
+        now -
+        countdownStartTime;
+
+    if (
+        elapsed >=
+        COUNTDOWN_MS
+    ) {
+        countdownActive = false;
+        timerRunning = true;
+        timedStartTime = now;
+        currentElapsedMs = 0;
+
+        status.textContent =
+            getTaskText();
+
+        updateHtmlTaskDisplay();
+    }
+}
+
+function completeAllQuestions(now) {
+    timerRunning = false;
+
+    finalElapsedMs =
+        timedStartTime > 0
+            ? now - timedStartTime
+            : currentElapsedMs;
+
+    currentElapsedMs =
+        finalElapsedMs;
+
+    finishedAll = true;
+    finishEffectStartTime = now;
+    gameCleared = true;
+
+    status.textContent =
+        "COMPLETE! 本番5問 合計 " +
+        formatTimeSeconds(
+            finalElapsedMs
+        ) +
+        " 秒";
+
+    updateHtmlTaskDisplay();
 }
 
 function deleteSelectedObject() {
@@ -2016,6 +2633,22 @@ function onXRFrame(time, frame) {
 
     if (!viewerPose) {
         return;
+    }
+
+    const now =
+        performance.now();
+
+    updateCountdownState(
+        now
+    );
+
+    if (
+        timerRunning &&
+        timedStartTime > 0
+    ) {
+        currentElapsedMs =
+            now -
+            timedStartTime;
     }
 
     let currentRay = null;
@@ -2132,6 +2765,10 @@ function onXRFrame(time, frame) {
         drawObjects(view);
         drawAddButton(view);
         drawTaskPanel(view);
+        drawProgressPanel(view);
+        drawTimerPanel(view);
+        drawCountdown(view, now);
+        drawFinishEffect(view, now);
         drawControlPanel(view);
 
         if (currentRay) {
@@ -2253,6 +2890,13 @@ xrButton.addEventListener(
                     );
 
                     if (!ray) {
+                        return;
+                    }
+
+                    if (
+                        countdownActive ||
+                        finishedAll
+                    ) {
                         return;
                     }
 
@@ -2567,8 +3211,12 @@ xrButton.addEventListener(
 // 初期化
 // ==================================================
 
+taskSequence =
+    buildTaskSequence();
+
+currentQuestionIndex = 0;
 currentTask =
-    createRandomTask();
+    taskSequence[0];
 
 updateTaskState();
 checkXR();
