@@ -21,10 +21,13 @@ const COLORS = {
     red: [1.0, 0.2, 0.2, 1.0],
     blue: [0.2, 0.6, 1.0, 1.0],
     green: [0.2, 1.0, 0.3, 1.0],
-    yellow: [1.0, 1.0, 0.2, 1.0],
+
     white: [1.0, 1.0, 1.0, 1.0],
+    gray: [0.55, 0.55, 0.60, 1.0],
+
     panel: [0.10, 0.10, 0.12, 1.0],
-    gray: [0.45, 0.45, 0.50, 1.0]
+
+    buttonHover: [0.85, 0.85, 0.90, 1.0]
 };
 
 
@@ -86,6 +89,7 @@ let hoverTarget = null;
 let isDragging = false;
 let activeInputSource = null;
 let activeBoxIndex = null;
+
 let dragDistance = 1.5;
 
 let pressStartTime = 0;
@@ -134,7 +138,9 @@ function createShader(type, source) {
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        throw new Error(gl.getShaderInfoLog(shader));
+        throw new Error(
+            gl.getShaderInfoLog(shader)
+        );
     }
 
     return shader;
@@ -154,14 +160,26 @@ function createProgram() {
 
     const shaderProgram = gl.createProgram();
 
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
+    gl.attachShader(
+        shaderProgram,
+        vertexShader
+    );
+
+    gl.attachShader(
+        shaderProgram,
+        fragmentShader
+    );
 
     gl.linkProgram(shaderProgram);
 
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+    if (!gl.getProgramParameter(
+        shaderProgram,
+        gl.LINK_STATUS
+    )) {
         throw new Error(
-            gl.getProgramInfoLog(shaderProgram)
+            gl.getProgramInfoLog(
+                shaderProgram
+            )
         );
     }
 
@@ -206,7 +224,8 @@ function createGeometry() {
         0, 7, 4
     ]);
 
-    cubePositionBuffer = gl.createBuffer();
+    cubePositionBuffer =
+        gl.createBuffer();
 
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
@@ -219,7 +238,8 @@ function createGeometry() {
         gl.STATIC_DRAW
     );
 
-    cubeIndexBuffer = gl.createBuffer();
+    cubeIndexBuffer =
+        gl.createBuffer();
 
     gl.bindBuffer(
         gl.ELEMENT_ARRAY_BUFFER,
@@ -232,7 +252,8 @@ function createGeometry() {
         gl.STATIC_DRAW
     );
 
-    rayBuffer = gl.createBuffer();
+    rayBuffer =
+        gl.createBuffer();
 }
 
 
@@ -250,16 +271,21 @@ function identityMatrix() {
 }
 
 
-function objectMatrix(center, scale, rotationY) {
+function objectMatrix(
+    center,
+    scale,
+    rotationY
+) {
     const c = Math.cos(rotationY);
     const s = Math.sin(rotationY);
 
-    const size = BOX_HALF * scale;
+    const size =
+        BOX_HALF * scale;
 
     return new Float32Array([
          c * size, 0, -s * size, 0,
-         0,        size, 0,        0,
-         s * size, 0,  c * size,  0,
+         0,        size, 0,       0,
+         s * size, 0,  c * size, 0,
 
          center[0],
          center[1],
@@ -372,7 +398,10 @@ function rayBoxDistance(
     let tmax = Infinity;
 
     for (let i = 0; i < 3; i++) {
-        if (Math.abs(direction[i]) < 0.000001) {
+        if (
+            Math.abs(direction[i]) <
+            0.000001
+        ) {
             if (
                 origin[i] < min[i] ||
                 origin[i] > max[i]
@@ -388,11 +417,17 @@ function rayBoxDistance(
                 (max[i] - origin[i]) /
                 direction[i];
 
-            const near = Math.min(t1, t2);
-            const far = Math.max(t1, t2);
+            const near =
+                Math.min(t1, t2);
 
-            tmin = Math.max(tmin, near);
-            tmax = Math.min(tmax, far);
+            const far =
+                Math.max(t1, t2);
+
+            tmin =
+                Math.max(tmin, near);
+
+            tmax =
+                Math.min(tmax, far);
 
             if (tmin > tmax) {
                 return null;
@@ -510,7 +545,10 @@ function findNearestTarget(
 ) {
     let result = null;
 
+    // ----------------------------
     // オブジェクト追加
+    // ----------------------------
+
     const addDistance =
         rayBoxDistance(
             origin,
@@ -526,7 +564,10 @@ function findNearestTarget(
         };
     }
 
+    // ----------------------------
     // 操作パネル
+    // ----------------------------
+
     const panel =
         getPanelLayout();
 
@@ -562,7 +603,10 @@ function findNearestTarget(
             }
         ];
 
-        for (const control of controls) {
+        for (
+            const control
+            of controls
+        ) {
             const distance =
                 rayBoxDistance(
                     origin,
@@ -575,7 +619,8 @@ function findNearestTarget(
                 distance !== null &&
                 (
                     result === null ||
-                    distance < result.distance
+                    distance <
+                    result.distance
                 )
             ) {
                 result = {
@@ -586,7 +631,10 @@ function findNearestTarget(
         }
     }
 
+    // ----------------------------
     // オブジェクト
+    // ----------------------------
+
     for (
         let i = 0;
         i < boxes.length;
@@ -608,7 +656,8 @@ function findNearestTarget(
             distance !== null &&
             (
                 result === null ||
-                distance < result.distance
+                distance <
+                result.distance
             )
         ) {
             result = {
@@ -764,7 +813,90 @@ function drawShape(
 
 
 // ==================================================
-// オブジェクト外枠
+// 四角い外枠
+// ==================================================
+
+function drawFrame(
+    view,
+    center,
+    half,
+    color,
+    depthOffset = 0
+) {
+    const t = 0.010;
+
+    const z =
+        center[2] +
+        depthOffset;
+
+    // 上
+    drawShape(
+        view,
+        shapeMatrix(
+            [
+                center[0],
+                center[1] + half,
+                z
+            ],
+            half,
+            t,
+            t
+        ),
+        color
+    );
+
+    // 下
+    drawShape(
+        view,
+        shapeMatrix(
+            [
+                center[0],
+                center[1] - half,
+                z
+            ],
+            half,
+            t,
+            t
+        ),
+        color
+    );
+
+    // 左
+    drawShape(
+        view,
+        shapeMatrix(
+            [
+                center[0] - half,
+                center[1],
+                z
+            ],
+            t,
+            half,
+            t
+        ),
+        color
+    );
+
+    // 右
+    drawShape(
+        view,
+        shapeMatrix(
+            [
+                center[0] + half,
+                center[1],
+                z
+            ],
+            t,
+            half,
+            t
+        ),
+        color
+    );
+}
+
+
+// ==================================================
+// オブジェクト3D外枠
 // ==================================================
 
 function drawBoxOutline(
@@ -777,7 +909,7 @@ function drawBoxOutline(
         box.scale +
         0.025;
 
-    const t = 0.012;
+    const t = 0.010;
 
     const x = box.center[0];
     const y = box.center[1];
@@ -847,6 +979,7 @@ function drawBoxOutline(
 
 // ==================================================
 // オブジェクト描画
+// 本体色は一切ホバーで変更しない
 // ==================================================
 
 function drawBoxes(view) {
@@ -855,9 +988,10 @@ function drawBoxes(view) {
         i < boxes.length;
         i++
     ) {
-        const box = boxes[i];
+        const box =
+            boxes[i];
 
-        // 本体は常に本来の色
+        // 本体は常に設定されている色
         drawShape(
             view,
             objectMatrix(
@@ -868,7 +1002,8 @@ function drawBoxes(view) {
             box.color
         );
 
-        let outlineColor = null;
+        let outlineColor =
+            null;
 
         // 掴んでいる
         if (
@@ -879,22 +1014,22 @@ function drawBoxes(view) {
                 COLORS.green;
         }
 
-        // レイが当たっている
-        else if (
-            hoverTarget &&
-            hoverTarget.type === "box" &&
-            hoverTarget.index === i
-        ) {
-            outlineColor =
-                COLORS.yellow;
-        }
-
         // 選択中
         else if (
             selectedBoxIndex === i
         ) {
             outlineColor =
                 COLORS.white;
+        }
+
+        // レイが当たっているだけ
+        else if (
+            hoverTarget &&
+            hoverTarget.type === "box" &&
+            hoverTarget.index === i
+        ) {
+            outlineColor =
+                COLORS.gray;
         }
 
         if (outlineColor) {
@@ -909,7 +1044,7 @@ function drawBoxes(view) {
 
 
 // ==================================================
-// ゴール描画
+// ゴール
 // ==================================================
 
 function drawGoal(view) {
@@ -925,7 +1060,6 @@ function drawGoal(view) {
     const h = GOAL_HALF;
     const t = 0.025;
 
-    // 上
     drawShape(
         view,
         shapeMatrix(
@@ -937,7 +1071,6 @@ function drawGoal(view) {
         color
     );
 
-    // 下
     drawShape(
         view,
         shapeMatrix(
@@ -949,7 +1082,6 @@ function drawGoal(view) {
         color
     );
 
-    // 左
     drawShape(
         view,
         shapeMatrix(
@@ -961,7 +1093,6 @@ function drawGoal(view) {
         color
     );
 
-    // 右
     drawShape(
         view,
         shapeMatrix(
@@ -1027,7 +1158,7 @@ function drawMinus(
 
 
 // ==================================================
-// 左右矢印
+// 矢印
 // ==================================================
 
 function drawArrow(
@@ -1041,7 +1172,6 @@ function drawArrow(
             ? 1
             : -1;
 
-    // 軸
     drawShape(
         view,
         shapeMatrix(
@@ -1057,7 +1187,6 @@ function drawArrow(
         center[0] +
         sign * 0.055;
 
-    // 矢印上
     drawShape(
         view,
         shapeMatrix(
@@ -1076,7 +1205,6 @@ function drawArrow(
         color
     );
 
-    // 矢印下
     drawShape(
         view,
         shapeMatrix(
@@ -1098,96 +1226,43 @@ function drawArrow(
 
 
 // ==================================================
-// 操作パネル
+// 通常操作ボタン色
 // ==================================================
 
-function controlColor(
-    type,
-    normalColor
-) {
+function normalControlColor(type) {
     if (
         hoverTarget &&
         hoverTarget.type === type
     ) {
-        return COLORS.yellow;
+        return COLORS.buttonHover;
     }
 
-    return normalColor;
+    return COLORS.white;
 }
 
 
-function drawColorSelectionFrame(
+// ==================================================
+// 色ボタン外枠
+// ==================================================
+
+function drawColorButtonFrame(
     view,
-    center
+    center,
+    color
 ) {
-    const h = 0.07;
-    const t = 0.008;
-
-    // 上
-    drawShape(
+    drawFrame(
         view,
-        shapeMatrix(
-            [
-                center[0],
-                center[1] + h,
-                center[2] + 0.01
-            ],
-            h,
-            t,
-            0.012
-        ),
-        COLORS.white
-    );
-
-    // 下
-    drawShape(
-        view,
-        shapeMatrix(
-            [
-                center[0],
-                center[1] - h,
-                center[2] + 0.01
-            ],
-            h,
-            t,
-            0.012
-        ),
-        COLORS.white
-    );
-
-    // 左
-    drawShape(
-        view,
-        shapeMatrix(
-            [
-                center[0] - h,
-                center[1],
-                center[2] + 0.01
-            ],
-            t,
-            h,
-            0.012
-        ),
-        COLORS.white
-    );
-
-    // 右
-    drawShape(
-        view,
-        shapeMatrix(
-            [
-                center[0] + h,
-                center[1],
-                center[2] + 0.01
-            ],
-            t,
-            h,
-            0.012
-        ),
-        COLORS.white
+        center,
+        0.070,
+        color,
+        0.012
     );
 }
 
+
+// ==================================================
+// 操作パネル
+// ==================================================
 
 function drawControlPanel(view) {
     const panel =
@@ -1197,7 +1272,10 @@ function drawControlPanel(view) {
         return;
     }
 
+    // ----------------------------
     // 背景
+    // ----------------------------
+
     drawShape(
         view,
         shapeMatrix(
@@ -1209,39 +1287,38 @@ function drawControlPanel(view) {
         COLORS.panel
     );
 
+
     // ----------------------------
-    // 上段：サイズ
+    // サイズ
     // ----------------------------
 
     drawMinus(
         view,
         panel.sizeMinus,
-        controlColor(
-            "sizeMinus",
-            COLORS.white
+        normalControlColor(
+            "sizeMinus"
         )
     );
 
     drawPlus(
         view,
         panel.sizePlus,
-        controlColor(
-            "sizePlus",
-            COLORS.white
+        normalControlColor(
+            "sizePlus"
         )
     );
 
+
     // ----------------------------
-    // 中段：回転
+    // 回転
     // ----------------------------
 
     drawArrow(
         view,
         panel.rotateLeft,
         "left",
-        controlColor(
-            "rotateLeft",
-            COLORS.white
+        normalControlColor(
+            "rotateLeft"
         )
     );
 
@@ -1249,19 +1326,16 @@ function drawControlPanel(view) {
         view,
         panel.rotateRight,
         "right",
-        controlColor(
-            "rotateRight",
-            COLORS.white
+        normalControlColor(
+            "rotateRight"
         )
     );
 
-    // ----------------------------
-    // 下段：色
-    // ----------------------------
 
-const redColor = COLORS.red;
-const blueColor = COLORS.blue;
-const greenColor = COLORS.green;
+    // ==================================================
+    // 色ボタン
+    // 色そのものは絶対に変更しない
+    // ==================================================
 
     drawShape(
         view,
@@ -1271,7 +1345,7 @@ const greenColor = COLORS.green;
             0.055,
             0.025
         ),
-        redColor
+        COLORS.red
     );
 
     drawShape(
@@ -1282,7 +1356,7 @@ const greenColor = COLORS.green;
             0.055,
             0.025
         ),
-        blueColor
+        COLORS.blue
     );
 
     drawShape(
@@ -1293,42 +1367,96 @@ const greenColor = COLORS.green;
             0.055,
             0.025
         ),
-        greenColor
+        COLORS.green
     );
 
-    // 現在選択されている色を白枠表示
+
+    // ----------------------------
+    // 現在の設定色
+    // 白枠
+    // ----------------------------
+
     const box =
         boxes[selectedBoxIndex];
 
-    if (!box) {
-        return;
+    if (box) {
+        if (
+            box.colorName === "red"
+        ) {
+            drawColorButtonFrame(
+                view,
+                panel.red,
+                COLORS.white
+            );
+        }
+
+        if (
+            box.colorName === "blue"
+        ) {
+            drawColorButtonFrame(
+                view,
+                panel.blue,
+                COLORS.white
+            );
+        }
+
+        if (
+            box.colorName === "green"
+        ) {
+            drawColorButtonFrame(
+                view,
+                panel.green,
+                COLORS.white
+            );
+        }
     }
 
-    if (box.colorName === "red") {
-        drawColorSelectionFrame(
+
+    // ----------------------------
+    // 色ボタンのホバー
+    // 色は変えず灰色枠のみ
+    // ----------------------------
+
+    if (
+        hoverTarget &&
+        hoverTarget.type ===
+        "colorRed"
+    ) {
+        drawColorButtonFrame(
             view,
-            panel.red
+            panel.red,
+            COLORS.gray
         );
     }
 
-    if (box.colorName === "blue") {
-        drawColorSelectionFrame(
+    if (
+        hoverTarget &&
+        hoverTarget.type ===
+        "colorBlue"
+    ) {
+        drawColorButtonFrame(
             view,
-            panel.blue
+            panel.blue,
+            COLORS.gray
         );
     }
 
-    if (box.colorName === "green") {
-        drawColorSelectionFrame(
+    if (
+        hoverTarget &&
+        hoverTarget.type ===
+        "colorGreen"
+    ) {
+        drawColorButtonFrame(
             view,
-            panel.green
+            panel.green,
+            COLORS.gray
         );
     }
 }
 
 
 // ==================================================
-// オブジェクト追加アイコン
+// オブジェクト追加ボタン
 // ==================================================
 
 function drawAddButton(view) {
@@ -1337,7 +1465,7 @@ function drawAddButton(view) {
             hoverTarget &&
             hoverTarget.type === "add"
         )
-            ? COLORS.yellow
+            ? COLORS.buttonHover
             : COLORS.green;
 
     drawShape(
@@ -1373,7 +1501,7 @@ function drawAddButton(view) {
 
 
 // ==================================================
-// レイ描画
+// レイ
 // ==================================================
 
 function drawRay(
@@ -1381,7 +1509,8 @@ function drawRay(
     origin,
     direction
 ) {
-    const rayLength = 2.5;
+    const rayLength =
+        2.5;
 
     const end = [
         origin[0] +
@@ -1482,17 +1611,14 @@ function drawRay(
         identityMatrix()
     );
 
-    let color = COLORS.white;
-
-    if (isDragging) {
-        color = COLORS.green;
-    } else if (hoverTarget) {
-        color = COLORS.yellow;
-    }
+    const rayColor =
+        isDragging
+            ? COLORS.green
+            : COLORS.white;
 
     gl.uniform4fv(
         colorLocation,
-        color
+        rayColor
     );
 
     gl.drawArrays(
@@ -1535,9 +1661,13 @@ function addNewBox() {
 // ==================================================
 
 function checkGoal() {
-    gameCleared = false;
+    gameCleared =
+        false;
 
-    for (const box of boxes) {
+    for (
+        const box
+        of boxes
+    ) {
         if (
             box.colorName !== "red"
         ) {
@@ -1573,7 +1703,8 @@ function checkGoal() {
             dy <= allowed &&
             dz <= 0.25
         ) {
-            gameCleared = true;
+            gameCleared =
+                true;
 
             status.textContent =
                 "正解！ 赤いオブジェクトをゴールに置けました。";
@@ -1611,7 +1742,9 @@ function onXRFrame(
         return;
     }
 
-    let currentRay = null;
+    let currentRay =
+        null;
+
 
     // ----------------------------
     // ドラッグ中
@@ -1645,12 +1778,14 @@ function onXRFrame(
                 dragDistance
             ];
 
-            currentRay = ray;
+            currentRay =
+                ray;
         }
     } else {
-        // ------------------------
-        // 通常時
-        // ------------------------
+
+        // ----------------------------
+        // 通常
+        // ----------------------------
 
         for (
             const inputSource
@@ -1663,12 +1798,15 @@ function onXRFrame(
                 );
 
             if (ray) {
-                currentRay = ray;
+                currentRay =
+                    ray;
+
                 break;
             }
         }
 
-        hoverTarget = null;
+        hoverTarget =
+            null;
 
         if (currentRay) {
             hoverTarget =
@@ -1678,6 +1816,7 @@ function onXRFrame(
                 );
         }
     }
+
 
     // ----------------------------
     // 描画
@@ -1735,7 +1874,7 @@ function onXRFrame(
 
 
 // ==================================================
-// WebXR対応確認
+// WebXR確認
 // ==================================================
 
 async function checkXR() {
@@ -1763,7 +1902,8 @@ async function checkXR() {
             );
 
     if (supported) {
-        xrButton.disabled = false;
+        xrButton.disabled =
+            false;
 
         xrButton.textContent =
             "MR体験を開始";
@@ -1787,8 +1927,10 @@ async function checkXR() {
 xrButton.addEventListener(
     "click",
     async () => {
+
         if (xrSession) {
             await xrSession.end();
+
             return;
         }
 
@@ -1848,13 +1990,14 @@ xrButton.addEventListener(
                 "オブジェクトを選択すると右側に操作パネルが表示されます。";
 
 
-            // ======================================
+            // ==================================================
             // 選択開始
-            // ======================================
+            // ==================================================
 
             xrSession.addEventListener(
                 "selectstart",
                 (event) => {
+
                     const ray =
                         getRay(
                             event.frame,
@@ -1876,21 +2019,22 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
-                    // オブジェクト追加
-                    // ------------------------------
+                    // ----------------------------
+                    // 追加
+                    // ----------------------------
 
                     if (
                         target.type === "add"
                     ) {
                         addNewBox();
+
                         return;
                     }
 
 
-                    // ------------------------------
+                    // ----------------------------
                     // サイズ -
-                    // ------------------------------
+                    // ----------------------------
 
                     if (
                         target.type ===
@@ -1915,9 +2059,9 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
+                    // ----------------------------
                     // サイズ +
-                    // ------------------------------
+                    // ----------------------------
 
                     if (
                         target.type ===
@@ -1942,9 +2086,9 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
+                    // ----------------------------
                     // 左回転
-                    // ------------------------------
+                    // ----------------------------
 
                     if (
                         target.type ===
@@ -1964,9 +2108,9 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
+                    // ----------------------------
                     // 右回転
-                    // ------------------------------
+                    // ----------------------------
 
                     if (
                         target.type ===
@@ -1986,9 +2130,9 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
+                    // ----------------------------
                     // 赤
-                    // ------------------------------
+                    // ----------------------------
 
                     if (
                         target.type ===
@@ -2013,9 +2157,9 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
+                    // ----------------------------
                     // 青
-                    // ------------------------------
+                    // ----------------------------
 
                     if (
                         target.type ===
@@ -2040,9 +2184,9 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
+                    // ----------------------------
                     // 緑
-                    // ------------------------------
+                    // ----------------------------
 
                     if (
                         target.type ===
@@ -2067,9 +2211,9 @@ xrButton.addEventListener(
                     }
 
 
-                    // ------------------------------
-                    // オブジェクト選択・移動開始
-                    // ------------------------------
+                    // ----------------------------
+                    // オブジェクト
+                    // ----------------------------
 
                     if (
                         target.type === "box"
@@ -2120,19 +2264,21 @@ xrButton.addEventListener(
                                 )
                             );
 
-                        isDragging = true;
+                        isDragging =
+                            true;
                     }
                 }
             );
 
 
-            // ======================================
+            // ==================================================
             // 選択終了
-            // ======================================
+            // ==================================================
 
             xrSession.addEventListener(
                 "selectend",
                 (event) => {
+
                     if (
                         event.inputSource !==
                         activeInputSource
@@ -2149,7 +2295,6 @@ xrButton.addEventListener(
                             activeBoxIndex
                         ];
 
-                    // 短いタップなら選択だけ
                     if (
                         box &&
                         duration < 300 &&
@@ -2181,35 +2326,51 @@ xrButton.addEventListener(
                         }
                     }
 
-                    isDragging = false;
+                    isDragging =
+                        false;
 
-                    activeInputSource = null;
-                    activeBoxIndex = null;
-                    pressStartCenter = null;
+                    activeInputSource =
+                        null;
+
+                    activeBoxIndex =
+                        null;
+
+                    pressStartCenter =
+                        null;
 
                     checkGoal();
                 }
             );
 
 
-            // ======================================
+            // ==================================================
             // MR終了
-            // ======================================
+            // ==================================================
 
             xrSession.addEventListener(
                 "end",
                 () => {
-                    xrSession = null;
 
-                    isDragging = false;
-                    activeInputSource = null;
-                    activeBoxIndex = null;
-                    selectedBoxIndex = null;
+                    xrSession =
+                        null;
+
+                    isDragging =
+                        false;
+
+                    activeInputSource =
+                        null;
+
+                    activeBoxIndex =
+                        null;
+
+                    selectedBoxIndex =
+                        null;
 
                     xrButton.textContent =
                         "MR体験を開始";
                 }
             );
+
 
             xrButton.textContent =
                 "MR体験を終了";
