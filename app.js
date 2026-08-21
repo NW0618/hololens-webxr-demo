@@ -95,7 +95,7 @@ const PROGRESS_PANEL_CENTER = [-0.44, 0.88, -1.30];
 
 let boxes = [
     {
-        center: [0.0, 0.0, -1.5],
+        center: [0.15, 0.0, -1.5],
         shape: "cube",
         colorName: "blue",
         color: COLORS.blue,
