@@ -12,6 +12,14 @@ let rayBuffer = null;
 let textProgram = null;
 let addTextTexture = null;
 let deleteTextTexture = null;
+
+let tutorialTitleTexture = null;
+let tutorialLine1Texture = null;
+let tutorialLine2Texture = null;
+let tutorialLine3Texture = null;
+let tutorialLine4Texture = null;
+let tutorialStartTexture = null;
+
 let textQuadPositionBuffer = null;
 let textQuadUvBuffer = null;
 let textQuadIndexBuffer = null;
@@ -80,6 +88,14 @@ let finalElapsedMs = 0;
 
 let finishedAll = false;
 let finishEffectStartTime = 0;
+
+// MR開始時に1回だけ表示する操作チュートリアル
+let tutorialActive = true;
+let tutorialCompleted = false;
+
+const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, -1.05];
+const TUTORIAL_START_CENTER = [-0.05, -0.46, -1.00];
+const TUTORIAL_START_HALF = 0.18;
 
 // 本番1～4問目の自動遷移
 let autoAdvancePending = false;
@@ -972,6 +988,25 @@ function findNearestTarget(origin, direction) {
         finishedAll ||
         autoAdvancePending
     ) {
+        return null;
+    }
+
+    if (tutorialActive) {
+        const tutorialDistance =
+            rayBoxDistance(
+                origin,
+                direction,
+                TUTORIAL_START_CENTER,
+                TUTORIAL_START_HALF
+            );
+
+        if (tutorialDistance !== null) {
+            return {
+                type: "tutorialStart",
+                distance: tutorialDistance
+            };
+        }
+
         return null;
     }
 
@@ -2662,6 +2697,104 @@ function drawControlPanel(view) {
 // ==================================================
 
 
+
+function drawTutorialPanel(view) {
+    if (!tutorialActive) {
+        return;
+    }
+
+    drawShape(
+        view,
+        shapeMatrix(
+            TUTORIAL_PANEL_CENTER,
+            0.68,
+            0.50,
+            0.030
+        ),
+        [0.06, 0.06, 0.08, 0.96]
+    );
+
+    drawTexturedQuad(
+        view,
+        [
+            TUTORIAL_PANEL_CENTER[0],
+            TUTORIAL_PANEL_CENTER[1] + 0.36,
+            TUTORIAL_PANEL_CENTER[2] + 0.070
+        ],
+        0.36,
+        0.060,
+        tutorialTitleTexture
+    );
+
+    const ys = [0.20, 0.07, -0.06, -0.19];
+    const textures = [
+        tutorialLine1Texture,
+        tutorialLine2Texture,
+        tutorialLine3Texture,
+        tutorialLine4Texture
+    ];
+    const widths = [0.48, 0.48, 0.52, 0.56];
+
+    for (let i = 0; i < 4; i++) {
+        drawTexturedQuad(
+            view,
+            [
+                TUTORIAL_PANEL_CENTER[0],
+                TUTORIAL_PANEL_CENTER[1] + ys[i],
+                TUTORIAL_PANEL_CENTER[2] + 0.070
+            ],
+            widths[i],
+            0.052,
+            textures[i]
+        );
+    }
+
+    const isHover =
+        hoverTarget &&
+        hoverTarget.type === "tutorialStart";
+
+    const buttonColor =
+        isHover
+            ? [0.20, 0.42, 0.25, 1.0]
+            : [0.08, 0.28, 0.12, 1.0];
+
+    const frameColor =
+        isHover
+            ? COLORS.white
+            : COLORS.green;
+
+    drawShape(
+        view,
+        shapeMatrix(
+            TUTORIAL_START_CENTER,
+            0.28,
+            0.10,
+            0.025
+        ),
+        buttonColor
+    );
+
+    drawFrame(
+        view,
+        TUTORIAL_START_CENTER,
+        0.11,
+        frameColor,
+        0.030
+    );
+
+    drawTexturedQuad(
+        view,
+        [
+            TUTORIAL_START_CENTER[0],
+            TUTORIAL_START_CENTER[1],
+            TUTORIAL_START_CENTER[2] + 0.060
+        ],
+        0.18,
+        0.052,
+        tutorialStartTexture
+    );
+}
+
 function drawAddButton(view) {
     const isHover =
         hoverTarget &&
@@ -3446,16 +3579,20 @@ function onXRFrame(time, frame) {
             viewport.height
         );
 
-        drawGoal(view);
-        drawObjects(view);
-        drawAddButton(view);
-        drawStandaloneDeleteButton(view);
-        drawTaskPanel(view);
-        drawProgressPanel(view);
-        drawTimerPanel(view);
-        drawCountdown(view, now);
-        drawFinishEffect(view, now);
-        drawControlPanel(view);
+        if (tutorialActive) {
+            drawTutorialPanel(view);
+        } else {
+            drawGoal(view);
+            drawObjects(view);
+            drawAddButton(view);
+            drawStandaloneDeleteButton(view);
+            drawTaskPanel(view);
+            drawProgressPanel(view);
+            drawTimerPanel(view);
+            drawCountdown(view, now);
+            drawFinishEffect(view, now);
+            drawControlPanel(view);
+        }
 
         if (currentRay) {
             drawRay(
@@ -3557,6 +3694,9 @@ xrButton.addEventListener(
                     "local"
                 );
 
+            tutorialActive = true;
+            tutorialCompleted = false;
+
             program = createProgram();
             textProgram = createTextProgram();
 
@@ -3585,9 +3725,80 @@ xrButton.addEventListener(
                     }
                 );
 
+            tutorialTitleTexture =
+                createJapaneseTextTexture(
+                    "操作チュートリアル",
+                    {
+                        width: 1024,
+                        height: 256,
+                        fontSize: 118,
+                        color: "#ffffff"
+                    }
+                );
+
+            tutorialLine1Texture =
+                createJapaneseTextTexture(
+                    "1. 図形を選択",
+                    {
+                        width: 1024,
+                        height: 256,
+                        fontSize: 104,
+                        color: "#ffffff"
+                    }
+                );
+
+            tutorialLine2Texture =
+                createJapaneseTextTexture(
+                    "2. つまんで移動",
+                    {
+                        width: 1024,
+                        height: 256,
+                        fontSize: 104,
+                        color: "#ffffff"
+                    }
+                );
+
+            tutorialLine3Texture =
+                createJapaneseTextTexture(
+                    "3. ×で調整画面を閉じる",
+                    {
+                        width: 1024,
+                        height: 256,
+                        fontSize: 96,
+                        color: "#ffffff"
+                    }
+                );
+
+            tutorialLine4Texture =
+                createJapaneseTextTexture(
+                    "4. 追加・削除は下のボタン",
+                    {
+                        width: 1024,
+                        height: 256,
+                        fontSize: 92,
+                        color: "#ffffff"
+                    }
+                );
+
+            tutorialStartTexture =
+                createJapaneseTextTexture(
+                    "練習開始",
+                    {
+                        width: 768,
+                        height: 256,
+                        fontSize: 118,
+                        color: "#ffffff"
+                    }
+                );
+
             gl.enable(gl.DEPTH_TEST);
 
             updateTaskState();
+
+            if (tutorialActive) {
+                status.textContent =
+                    "操作チュートリアルを確認して、練習開始を押してください。";
+            }
 
             // ==================================================
             // 選択開始
@@ -3619,6 +3830,21 @@ xrButton.addEventListener(
                     );
 
                     if (!target) {
+                        return;
+                    }
+
+                    if (
+                        target.type ===
+                        "tutorialStart"
+                    ) {
+                        tutorialActive = false;
+                        tutorialCompleted = true;
+                        selectedBoxIndex = null;
+
+                        status.textContent =
+                            getTaskText();
+
+                        updateHtmlTaskDisplay();
                         return;
                     }
 
