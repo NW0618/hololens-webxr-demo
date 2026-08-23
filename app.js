@@ -18,6 +18,7 @@ let tutorialLine1Texture = null;
 let tutorialLine2Texture = null;
 let tutorialLine3Texture = null;
 let tutorialLine4Texture = null;
+let tutorialLine5Texture = null;
 let tutorialStartTexture = null;
 
 let textQuadPositionBuffer = null;
@@ -94,7 +95,7 @@ let tutorialActive = true;
 let tutorialCompleted = false;
 
 const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, -1.05];
-const TUTORIAL_START_CENTER = [-0.05, -0.46, -1.00];
+const TUTORIAL_START_CENTER = [-0.05, -0.54, -1.00];
 const TUTORIAL_START_HALF = 0.18;
 
 // 本番1～4問目の自動遷移
@@ -2707,8 +2708,8 @@ function drawTutorialPanel(view) {
         view,
         shapeMatrix(
             TUTORIAL_PANEL_CENTER,
-            0.68,
-            0.50,
+            0.72,
+            0.56,
             0.030
         ),
         [0.06, 0.06, 0.08, 0.96]
@@ -2718,24 +2719,25 @@ function drawTutorialPanel(view) {
         view,
         [
             TUTORIAL_PANEL_CENTER[0],
-            TUTORIAL_PANEL_CENTER[1] + 0.36,
+            TUTORIAL_PANEL_CENTER[1] + 0.43,
             TUTORIAL_PANEL_CENTER[2] + 0.070
         ],
         0.36,
-        0.060,
+        0.052,
         tutorialTitleTexture
     );
 
-    const ys = [0.20, 0.07, -0.06, -0.19];
+    const ys = [0.27, 0.14, 0.01, -0.12, -0.25];
     const textures = [
         tutorialLine1Texture,
         tutorialLine2Texture,
         tutorialLine3Texture,
-        tutorialLine4Texture
+        tutorialLine4Texture,
+        tutorialLine5Texture
     ];
-    const widths = [0.48, 0.48, 0.52, 0.56];
+    const widths = [0.62, 0.62, 0.62, 0.54, 0.62];
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
         drawTexturedQuad(
             view,
             [
@@ -2744,7 +2746,7 @@ function drawTutorialPanel(view) {
                 TUTORIAL_PANEL_CENTER[2] + 0.070
             ],
             widths[i],
-            0.052,
+            0.046,
             textures[i]
         );
     }
@@ -3738,29 +3740,40 @@ xrButton.addEventListener(
 
             tutorialLine1Texture =
                 createJapaneseTextTexture(
-                    "1. 図形を選択",
+                    "1. 手を前に出し、光線を図形に合わせる",
                     {
-                        width: 1024,
+                        width: 1536,
                         height: 256,
-                        fontSize: 78,
+                        fontSize: 68,
                         color: "#ffffff"
                     }
                 );
 
             tutorialLine2Texture =
                 createJapaneseTextTexture(
-                    "2. つまんで移動",
+                    "2. 親指と人差し指をつまんで選択・移動",
                     {
-                        width: 1024,
+                        width: 1536,
                         height: 256,
-                        fontSize: 78,
+                        fontSize: 66,
                         color: "#ffffff"
                     }
                 );
 
             tutorialLine3Texture =
                 createJapaneseTextTexture(
-                    "3. ×で調整画面を閉じる",
+                    "3. 図形を選ぶと色・形・大きさを変更できます",
+                    {
+                        width: 1536,
+                        height: 256,
+                        fontSize: 62,
+                        color: "#ffffff"
+                    }
+                );
+
+            tutorialLine4Texture =
+                createJapaneseTextTexture(
+                    "4. ×で操作画面を閉じます",
                     {
                         width: 1024,
                         height: 256,
@@ -3769,13 +3782,13 @@ xrButton.addEventListener(
                     }
                 );
 
-            tutorialLine4Texture =
+            tutorialLine5Texture =
                 createJapaneseTextTexture(
-                    "4. 追加・削除は下のボタン",
+                    "5. 追加・削除は下のボタンから操作します",
                     {
-                        width: 1024,
+                        width: 1536,
                         height: 256,
-                        fontSize: 69,
+                        fontSize: 64,
                         color: "#ffffff"
                     }
                 );
