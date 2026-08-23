@@ -3731,7 +3731,7 @@ xrButton.addEventListener(
                     {
                         width: 1024,
                         height: 256,
-                        fontSize: 118,
+                        fontSize: 88,
                         color: "#ffffff"
                     }
                 );
@@ -3742,7 +3742,7 @@ xrButton.addEventListener(
                     {
                         width: 1024,
                         height: 256,
-                        fontSize: 104,
+                        fontSize: 78,
                         color: "#ffffff"
                     }
                 );
@@ -3753,7 +3753,7 @@ xrButton.addEventListener(
                     {
                         width: 1024,
                         height: 256,
-                        fontSize: 104,
+                        fontSize: 78,
                         color: "#ffffff"
                     }
                 );
@@ -3764,7 +3764,7 @@ xrButton.addEventListener(
                     {
                         width: 1024,
                         height: 256,
-                        fontSize: 96,
+                        fontSize: 72,
                         color: "#ffffff"
                     }
                 );
@@ -3775,7 +3775,7 @@ xrButton.addEventListener(
                     {
                         width: 1024,
                         height: 256,
-                        fontSize: 92,
+                        fontSize: 69,
                         color: "#ffffff"
                     }
                 );
@@ -3786,7 +3786,7 @@ xrButton.addEventListener(
                     {
                         width: 768,
                         height: 256,
-                        fontSize: 118,
+                        fontSize: 92,
                         color: "#ffffff"
                     }
                 );
