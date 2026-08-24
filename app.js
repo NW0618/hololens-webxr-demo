@@ -20,8 +20,10 @@ let tutorialLine3Texture = null;
 let tutorialLine4Texture = null;
 let tutorialLine5Texture = null;
 
-// v46: 起動時の1～5は「追加」「削除」に近い短いCanvas文字へ分割して描画する
-let tutorialLineSegmentRows = [];
+// v47: 起動時1～5はCanvas比率をそのままMR内の表示比率へ反映
+let tutorialLineAspects = [
+    1, 1, 1, 1, 1
+];
 
 let tutorialStartTexture = null;
 let finalClearTexture = null;
@@ -585,47 +587,17 @@ function createJapaneseTextTexture(
     return texture;
 }
 
-
 // ==================================================
-// v46: チュートリアル文字を短いテクスチャへ分割
-// 「追加」「削除」と同様に、横長1枚へ強く引き伸ばさない
+// v47: 「追加」「削除」と同じ128pxフォントを使い、
+// 文字列の実幅に合わせてCanvas幅を決める。
+// MR内でもCanvasの縦横比をそのまま使う。
 // ==================================================
-
-function splitTutorialText(
-    textValue,
-    maxChars = 7
-) {
-    const chars =
-        Array.from(
-            textValue
-        );
-
-    const chunks = [];
-
-    for (
-        let i = 0;
-        i < chars.length;
-        i += maxChars
-    ) {
-        chunks.push(
-            chars
-                .slice(
-                    i,
-                    i + maxChars
-                )
-                .join("")
-        );
-    }
-
-    return chunks;
-}
-
-function createTutorialSegmentTexture(
+function createTutorialLineTexture(
     textValue
 ) {
     const height = 256;
     const fontSize = 128;
-    const paddingX = 24;
+    const paddingX = 28;
 
     const measureCanvas =
         document.createElement(
@@ -655,13 +627,12 @@ function createTutorialSegmentTexture(
             )
             .width;
 
-    // 7文字単位なので1024px以内に収まりやすい。
-    // 文字幅に合わせてCanvas自体も短くする。
+    // 最長行でもHoloLens 2で扱いやすい範囲に収める
     const width =
         Math.max(
-            128,
+            256,
             Math.min(
-                1024,
+                3072,
                 Math.ceil(
                     measuredWidth +
                     paddingX * 2
@@ -687,26 +658,6 @@ function createTutorialSegmentTexture(
         aspect:
             width / height
     };
-}
-
-function createTutorialSegmentRows() {
-    const lines = [
-        "1. 手を前に出し、光線を図形に合わせる",
-        "2. 親指と人差し指をつまんで選択・移動",
-        "3. 図形を選ぶと色・形・大きさを変更できます",
-        "4. ×で操作画面を閉じます",
-        "5. 追加・削除は下のボタンから操作します"
-    ];
-
-    return lines.map(
-        (line) =>
-            splitTutorialText(
-                line,
-                7
-            ).map(
-                createTutorialSegmentTexture
-            )
-    );
 }
 
 function createTextQuadGeometry() {
@@ -2889,62 +2840,45 @@ function drawTutorialPanel(view) {
         tutorialTitleTexture
     );
 
-    // v46: 1～5は短い文字テクスチャを横に並べる。
-    // 1枚の極端に横長なQuadを使わず、「追加」「削除」に近い描画単位にする。
+    // v47:
+    // 「追加」「削除」と同じ物理高さ0.12mで表示する。
+    // Canvas比率とMR内Quad比率も一致させる。
     const ys = [
-        0.27,
+        0.28,
         0.14,
-        0.01,
-        -0.12,
-        -0.25
+        0.00,
+        -0.14,
+        -0.28
     ];
 
-    const tutorialSegmentHalfHeight =
-        0.023;
+    const textures = [
+        tutorialLine1Texture,
+        tutorialLine2Texture,
+        tutorialLine3Texture,
+        tutorialLine4Texture,
+        tutorialLine5Texture
+    ];
 
-    const tutorialSegmentFullHeight =
-        tutorialSegmentHalfHeight * 2;
-
-    const tutorialLineStartX =
-        TUTORIAL_PANEL_CENTER[0] -
-        0.60;
-
-    const tutorialSegmentGap =
-        0.004;
+    // 「追加」「削除」と同じ全高0.12m
+    const tutorialLineHalfHeight =
+        0.060;
 
     for (let i = 0; i < 5; i++) {
-        const row =
-            tutorialLineSegmentRows[i] || [];
+        const halfWidth =
+            tutorialLineHalfHeight *
+            tutorialLineAspects[i];
 
-        let cursorX =
-            tutorialLineStartX;
-
-        for (
-            const segment of row
-        ) {
-            const fullWidth =
-                tutorialSegmentFullHeight *
-                segment.aspect;
-
-            const halfWidth =
-                fullWidth / 2;
-
-            drawTexturedQuad(
-                view,
-                [
-                    cursorX + halfWidth,
-                    TUTORIAL_PANEL_CENTER[1] + ys[i],
-                    TUTORIAL_PANEL_CENTER[2] + TUTORIAL_CONTENT_OFFSET
-                ],
-                halfWidth,
-                tutorialSegmentHalfHeight,
-                segment.texture
-            );
-
-            cursorX +=
-                fullWidth +
-                tutorialSegmentGap;
-        }
+        drawTexturedQuad(
+            view,
+            [
+                TUTORIAL_PANEL_CENTER[0],
+                TUTORIAL_PANEL_CENTER[1] + ys[i],
+                TUTORIAL_PANEL_CENTER[2] + TUTORIAL_CONTENT_OFFSET
+            ],
+            halfWidth,
+            tutorialLineHalfHeight,
+            textures[i]
+        );
     }
 
     const isHover =
@@ -3958,9 +3892,39 @@ xrButton.addEventListener(
                     }
                 );
 
-            // v46: 起動時の注意事項1～5は、短いCanvas文字へ分割して生成
-            tutorialLineSegmentRows =
-                createTutorialSegmentRows();
+            const tutorialLines = [
+                "1. 手を前に出し、光線を図形に合わせる",
+                "2. 親指と人差し指をつまんで選択・移動",
+                "3. 図形を選ぶと色・形・大きさを変更できます",
+                "4. ×で操作画面を閉じます",
+                "5. 追加・削除は下のボタンから操作します"
+            ];
+
+            const tutorialLineResults =
+                tutorialLines.map(
+                    createTutorialLineTexture
+                );
+
+            tutorialLine1Texture =
+                tutorialLineResults[0].texture;
+
+            tutorialLine2Texture =
+                tutorialLineResults[1].texture;
+
+            tutorialLine3Texture =
+                tutorialLineResults[2].texture;
+
+            tutorialLine4Texture =
+                tutorialLineResults[3].texture;
+
+            tutorialLine5Texture =
+                tutorialLineResults[4].texture;
+
+            tutorialLineAspects =
+                tutorialLineResults.map(
+                    (result) =>
+                        result.aspect
+                );
 
             tutorialStartTexture =
                 createJapaneseTextTexture(
