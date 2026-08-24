@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HoloLens 文字表示比較テスト</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      padding: 44px 24px;
+      font-family: "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+      text-align: center;
+      background: #f7f7f8;
+      color: #111827;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    h1 { margin: 0 0 20px; font-size: 32px; }
+    .guide {
+      margin: 0 auto 24px;
+      padding: 18px 22px;
+      border: 2px solid #4b5563;
+      border-radius: 12px;
+      background: #fff;
+      font-size: 20px;
+      line-height: 1.75;
+      text-align: left;
+    }
+    .canvas { color: #b91c1c; font-weight: 700; }
+    .mesh { color: #15803d; font-weight: 700; }
+    .cube { color: #1d4ed8; font-weight: 700; }
+    button {
+      font-size: 26px;
+      padding: 16px 30px;
+      border: 0;
+      border-radius: 10px;
+      background: #1f6f43;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: default;
+    }
+    #status {
+      min-height: 32px;
+      margin-top: 18px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>HoloLens 文字表示比較テスト</h1>
+
+    <div class="guide">
+      <div><span class="canvas">左の赤いパネル</span>：現在のCanvasテクスチャ文字</div>
+      <div><span class="mesh">右の緑のパネル</span>：画像を使わない3Dメッシュ文字</div>
+      <div><span class="cube">下の青い立方体</span>：通常の3D図形の比較基準</div>
+      <div>両目で見た後、頭を左右へ10〜20cm動かし、片目ずつ閉じて見え方を比べてください。</div>
+    </div>
+
+    <button id="xrButton" disabled>WebXR確認中...</button>
+    <div id="status"></div>
+  </main>
+
+  <script src="text_meshes.js?v=1"></script>
+  <script src="app.js?v=1"></script>
+</body>
+</html>
