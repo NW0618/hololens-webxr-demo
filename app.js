@@ -32,6 +32,9 @@ let textQuadIndexBuffer = null;
 
 const BOX_HALF = 0.15;
 
+// 主要な表示物の基準距離：ユーザーから約2m先
+const DISPLAY_Z = -2.00;
+
 // UI背景の前面から3mmだけ手前に文字・記号を配置する
 const DEPTH_EPSILON = 0.003;
 const THIN_PANEL_CONTENT_OFFSET = 0.018 + DEPTH_EPSILON;
@@ -101,8 +104,8 @@ let finishEffectStartTime = 0;
 let tutorialActive = true;
 let tutorialCompleted = false;
 
-const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, -2.00];
-const TUTORIAL_START_CENTER = [-0.05, -0.54, -2.00];
+const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, DISPLAY_Z];
+const TUTORIAL_START_CENTER = [-0.05, -0.54, DISPLAY_Z];
 const TUTORIAL_START_HALF = 0.18;
 
 // 本番1～4問目の自動遷移
@@ -113,23 +116,23 @@ const AUTO_ADVANCE_DELAY_MS = 800;
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
-const NEXT_TASK_CENTER = [-0.05, 0.0, -2.00];
+const NEXT_TASK_CENTER = [-0.05, 0.0, DISPLAY_Z];
 const NEXT_TASK_HALF = 0.14;
 
-const TIMER_PANEL_CENTER = [-0.05, 0.96, -2.00];
-const PROGRESS_PANEL_CENTER = [-0.62, 0.96, -2.00];
+const TIMER_PANEL_CENTER = [-0.05, 0.96, DISPLAY_Z];
+const PROGRESS_PANEL_CENTER = [-0.62, 0.96, DISPLAY_Z];
 
 // 最終結果表示：目線の高さ
-const FINAL_CLEAR_CENTER = [-0.05, 0.28, -2.00];
-const FINAL_TIME_CENTER = [-0.05, 0.02, -2.00];
+const FINAL_CLEAR_CENTER = [-0.05, 0.28, DISPLAY_Z];
+const FINAL_TIME_CENTER = [-0.05, 0.02, DISPLAY_Z];
 
 // ==================================================
-// 初期オブジェクト：1個だけ
+// 初期オブジェクト：1個だけ（約2m先）
 // ==================================================
 
 let boxes = [
     {
-        center: [-0.05, 0.0, -1.5],
+        center: [-0.05, 0.0, DISPLAY_Z],
         shape: "cube",
         colorName: "blue",
         color: COLORS.blue,
@@ -144,10 +147,10 @@ let previousGoalObjectCount = 0;
 
 // ==================================================
 // ゴール
-// 左側へ配置。2個を並べて入れやすい大きさは維持
+// 左側・約2m先。2個を並べて入れやすい大きさは維持
 // ==================================================
 
-const GOAL_CENTER = [-1.12, -0.02, -1.5];
+const GOAL_CENTER = [-1.12, -0.02, DISPLAY_Z];
 const GOAL_HALF = 0.50;
 const GOAL_DEPTH_TOLERANCE = 0.75;
 
@@ -156,18 +159,18 @@ const GOAL_DEPTH_TOLERANCE = 0.75;
 // 画面上部から右下側へ移動
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.02, -0.62, -2.00];
+const TASK_PANEL_CENTER = [0.02, -0.62, DISPLAY_Z];
 
 // ==================================================
 // オブジェクト追加ボタン：右下側
 // 追加されたオブジェクトと重ならない位置
 // ==================================================
 
-const ADD_CENTER = [0.72, -0.66, -2.00];
+const ADD_CENTER = [0.72, -0.66, DISPLAY_Z];
 const ADD_HALF = 0.20;
 
 // 「追加」の右側に独立した削除ボタン
-const DELETE_CENTER = [1.32, -0.66, -2.00];
+const DELETE_CENTER = [1.32, -0.66, DISPLAY_Z];
 const DELETE_HALF = 0.20;
 
 // ==================================================
@@ -959,7 +962,8 @@ function getPanelLayout() {
     const objectHalf = BOX_HALF * box.scale;
     const panelX = box.center[0] + objectHalf + 0.50;
     const panelY = box.center[1];
-    const panelZ = box.center[2] + 0.04;
+    // 調整パネルも常に約2m先へ固定する
+    const panelZ = DISPLAY_Z;
 
     const sizeY = panelY + 0.30;
     const rotateY = panelY + 0.10;
@@ -969,22 +973,22 @@ function getPanelLayout() {
     return {
         center: [panelX, panelY, panelZ],
 
-        sizeMinus: [panelX - 0.13, sizeY, panelZ + 0.04],
-        sizePlus: [panelX + 0.13, sizeY, panelZ + 0.04],
+        sizeMinus: [panelX - 0.13, sizeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        sizePlus: [panelX + 0.13, sizeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
 
-        rotateVertical: [panelX - 0.13, rotateY, panelZ + 0.04],
-        rotateHorizontal: [panelX + 0.13, rotateY, panelZ + 0.04],
+        rotateVertical: [panelX - 0.13, rotateY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        rotateHorizontal: [panelX + 0.13, rotateY, panelZ + THIN_PANEL_CONTENT_OFFSET],
 
-        red: [panelX - 0.17, colorY, panelZ + 0.04],
-        blue: [panelX, colorY, panelZ + 0.04],
-        green: [panelX + 0.17, colorY, panelZ + 0.04],
+        red: [panelX - 0.17, colorY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        blue: [panelX, colorY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        green: [panelX + 0.17, colorY, panelZ + THIN_PANEL_CONTENT_OFFSET],
 
-        cube: [panelX - 0.17, shapeY, panelZ + 0.04],
-        sphere: [panelX, shapeY, panelZ + 0.04],
-        tetra: [panelX + 0.17, shapeY, panelZ + 0.04],
+        cube: [panelX - 0.17, shapeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        sphere: [panelX, shapeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        tetra: [panelX + 0.17, shapeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
 
         // 削除ボタン：操作パネル右上
-        deleteButton: [panelX + 0.24, panelY + 0.50, panelZ + 0.06]
+        deleteButton: [panelX + 0.24, panelY + 0.50, panelZ + 0.051]
     };
 }
 
@@ -2164,7 +2168,7 @@ function drawCountdown(view, now) {
     drawShape(
         view,
         shapeMatrix(
-            [0.0, 0.12, -2.00],
+            [0.0, 0.12, DISPLAY_Z],
             0.18,
             0.18,
             0.025
@@ -2174,7 +2178,7 @@ function drawCountdown(view, now) {
 
     drawSevenSegmentDigit(
         view,
-        [0.0, 0.12, -1.972],
+        [0.0, 0.12, DISPLAY_Z + BUTTON_CONTENT_OFFSET],
         number,
         COLORS.white,
         2.2
@@ -2235,9 +2239,9 @@ function drawFinishEffect(view, now) {
                             radius,
                         0.18 +
                             yWave,
-                        -1.95 +
+                        DISPLAY_Z +
                             Math.sin(angle) *
-                            0.10
+                            0.03
                     ],
                     0.025,
                     0.025,
@@ -3084,7 +3088,7 @@ function buildTaskSequence() {
 function resetObjectsForTask() {
     boxes = [
         {
-            center: [-0.05, 0.0, -1.5],
+            center: [-0.05, 0.0, DISPLAY_Z],
             shape: "cube",
             colorName: "blue",
             color: COLORS.blue,
@@ -3423,16 +3427,28 @@ function deleteSelectedObject() {
 // ==================================================
 
 function addNewObject() {
-    const offset = Math.max(
+    // 追加したオブジェクトも同じ約2m面に並べる。
+    // 重なりを避けるため、奥行きではなくX/Y方向へ配置する。
+    const spawnIndex = Math.max(
         0,
         boxes.length - 1
-    ) * 0.18;
+    );
+
+    const spawnColumn =
+        spawnIndex % 2;
+
+    const spawnRow =
+        Math.floor(
+            spawnIndex / 2
+        );
 
     boxes.push({
         center: [
-            0.08,
-            0.24,
-            -1.72 - offset
+            0.08 +
+                spawnColumn * 0.38,
+            0.24 -
+                spawnRow * 0.34,
+            DISPLAY_Z
         ],
         shape: "cube",
         colorName: "blue",
