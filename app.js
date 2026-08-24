@@ -32,6 +32,12 @@ let textQuadIndexBuffer = null;
 
 const BOX_HALF = 0.15;
 
+// UI背景の前面から3mmだけ手前に文字・記号を配置する
+const DEPTH_EPSILON = 0.003;
+const THIN_PANEL_CONTENT_OFFSET = 0.018 + DEPTH_EPSILON;
+const BUTTON_CONTENT_OFFSET = 0.025 + DEPTH_EPSILON;
+const TUTORIAL_CONTENT_OFFSET = 0.030 + DEPTH_EPSILON;
+
 const COLORS = {
     red: [1.0, 0.2, 0.2, 1.0],
     blue: [0.2, 0.6, 1.0, 1.0],
@@ -953,7 +959,7 @@ function getPanelLayout() {
     const objectHalf = BOX_HALF * box.scale;
     const panelX = box.center[0] + objectHalf + 0.50;
     const panelY = box.center[1];
-    const panelZ = box.center[2] + 0.003;
+    const panelZ = box.center[2] + 0.04;
 
     const sizeY = panelY + 0.30;
     const rotateY = panelY + 0.10;
@@ -963,19 +969,19 @@ function getPanelLayout() {
     return {
         center: [panelX, panelY, panelZ],
 
-        sizeMinus: [panelX - 0.13, sizeY, panelZ + 0.003],
-        sizePlus: [panelX + 0.13, sizeY, panelZ + 0.003],
+        sizeMinus: [panelX - 0.13, sizeY, panelZ + 0.04],
+        sizePlus: [panelX + 0.13, sizeY, panelZ + 0.04],
 
-        rotateVertical: [panelX - 0.13, rotateY, panelZ + 0.003],
-        rotateHorizontal: [panelX + 0.13, rotateY, panelZ + 0.003],
+        rotateVertical: [panelX - 0.13, rotateY, panelZ + 0.04],
+        rotateHorizontal: [panelX + 0.13, rotateY, panelZ + 0.04],
 
-        red: [panelX - 0.17, colorY, panelZ + 0.003],
-        blue: [panelX, colorY, panelZ + 0.003],
-        green: [panelX + 0.17, colorY, panelZ + 0.003],
+        red: [panelX - 0.17, colorY, panelZ + 0.04],
+        blue: [panelX, colorY, panelZ + 0.04],
+        green: [panelX + 0.17, colorY, panelZ + 0.04],
 
-        cube: [panelX - 0.17, shapeY, panelZ + 0.003],
-        sphere: [panelX, shapeY, panelZ + 0.003],
-        tetra: [panelX + 0.17, shapeY, panelZ + 0.003],
+        cube: [panelX - 0.17, shapeY, panelZ + 0.04],
+        sphere: [panelX, shapeY, panelZ + 0.04],
+        tetra: [panelX + 0.17, shapeY, panelZ + 0.04],
 
         // 削除ボタン：操作パネル右上
         deleteButton: [panelX + 0.24, panelY + 0.50, panelZ + 0.06]
@@ -1939,7 +1945,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] + 0.025,
-                NEXT_TASK_CENTER[2] + 0.003
+                NEXT_TASK_CENTER[2] + BUTTON_CONTENT_OFFSET
             ],
             0.050,
             0.010,
@@ -1955,7 +1961,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] - 0.025,
-                NEXT_TASK_CENTER[2] + 0.003
+                NEXT_TASK_CENTER[2] + BUTTON_CONTENT_OFFSET
             ],
             0.050,
             0.010,
@@ -1993,7 +1999,7 @@ function drawTaskPanel(view) {
             [
                 TASK_PANEL_CENTER[0] - 0.08,
                 TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + 0.003
+                TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
             ],
             GOAL_CLEAR_COLOR
         );
@@ -2014,7 +2020,7 @@ function drawTaskPanel(view) {
             [
                 TASK_PANEL_CENTER[0] - 0.15,
                 TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + 0.003
+                TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
             ],
             0.060,
             -0.20,
@@ -2028,7 +2034,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.015,
             TASK_PANEL_CENTER[1],
-            TASK_PANEL_CENTER[2] + 0.003
+            TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
         ],
         COLORS.white
     );
@@ -2038,7 +2044,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.16,
             TASK_PANEL_CENTER[1],
-            TASK_PANEL_CENTER[2] + 0.003
+            TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
         ],
         currentTask.requiredCount,
         COLORS.white,
@@ -2078,7 +2084,7 @@ function drawProgressPanel(view) {
         [
             PROGRESS_PANEL_CENTER[0],
             PROGRESS_PANEL_CENTER[1],
-            PROGRESS_PANEL_CENTER[2] + 0.003
+            PROGRESS_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
         ],
         COLORS.white,
         0.85,
@@ -2122,7 +2128,7 @@ function drawTimerPanel(view) {
         [
             TIMER_PANEL_CENTER[0],
             TIMER_PANEL_CENTER[1],
-            TIMER_PANEL_CENTER[2] + 0.003
+            TIMER_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
         ],
         COLORS.white,
         0.70,
@@ -2168,7 +2174,7 @@ function drawCountdown(view, now) {
 
     drawSevenSegmentDigit(
         view,
-        [0.0, 0.12, -1.997],
+        [0.0, 0.12, -1.972],
         number,
         COLORS.white,
         2.2
@@ -2518,7 +2524,7 @@ function drawDeleteButton(view, center) {
     );
 
     const z =
-        center[2] + 0.0030;
+        center[2] + 0.040;
 
     const xColor =
         isHover
@@ -2728,7 +2734,7 @@ function drawTutorialPanel(view) {
         [
             TUTORIAL_PANEL_CENTER[0],
             TUTORIAL_PANEL_CENTER[1] + 0.43,
-            TUTORIAL_PANEL_CENTER[2] + 0.003
+            TUTORIAL_PANEL_CENTER[2] + TUTORIAL_CONTENT_OFFSET
         ],
         0.36,
         0.052,
@@ -2751,7 +2757,7 @@ function drawTutorialPanel(view) {
             [
                 TUTORIAL_PANEL_CENTER[0],
                 TUTORIAL_PANEL_CENTER[1] + ys[i],
-                TUTORIAL_PANEL_CENTER[2] + 0.003
+                TUTORIAL_PANEL_CENTER[2] + TUTORIAL_CONTENT_OFFSET
             ],
             widths[i],
             0.046,
@@ -2797,7 +2803,7 @@ function drawTutorialPanel(view) {
         [
             TUTORIAL_START_CENTER[0],
             TUTORIAL_START_CENTER[1],
-            TUTORIAL_START_CENTER[2] + 0.003
+            TUTORIAL_START_CENTER[2] + BUTTON_CONTENT_OFFSET
         ],
         0.18,
         0.052,
@@ -2844,7 +2850,7 @@ function drawAddButton(view) {
         [
             ADD_CENTER[0],
             ADD_CENTER[1],
-            ADD_CENTER[2] + 0.003
+            ADD_CENTER[2] + BUTTON_CONTENT_OFFSET
         ],
         0.145,
         0.060,
@@ -2914,7 +2920,7 @@ function drawStandaloneDeleteButton(view) {
             [
                 DELETE_CENTER[0],
                 DELETE_CENTER[1],
-                DELETE_CENTER[2] + 0.003
+                DELETE_CENTER[2] + BUTTON_CONTENT_OFFSET
             ],
             0.145,
             0.060,
