@@ -20,6 +20,7 @@ let tutorialLine3Texture = null;
 let tutorialLine4Texture = null;
 let tutorialLine5Texture = null;
 let tutorialStartTexture = null;
+let finalClearTexture = null;
 
 let textQuadPositionBuffer = null;
 let textQuadUvBuffer = null;
@@ -94,8 +95,8 @@ let finishEffectStartTime = 0;
 let tutorialActive = true;
 let tutorialCompleted = false;
 
-const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, -1.05];
-const TUTORIAL_START_CENTER = [-0.05, -0.54, -1.00];
+const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, -1.50];
+const TUTORIAL_START_CENTER = [-0.05, -0.54, -1.45];
 const TUTORIAL_START_HALF = 0.18;
 
 // 本番1～4問目の自動遷移
@@ -111,6 +112,10 @@ const NEXT_TASK_HALF = 0.14;
 
 const TIMER_PANEL_CENTER = [-0.05, 0.96, -1.30];
 const PROGRESS_PANEL_CENTER = [-0.62, 0.96, -1.30];
+
+// 最終結果表示：目線の高さ
+const FINAL_CLEAR_CENTER = [-0.05, 0.28, -1.50];
+const FINAL_TIME_CENTER = [-0.05, 0.02, -1.50];
 
 // ==================================================
 // 初期オブジェクト：1個だけ
@@ -1962,12 +1967,14 @@ function drawNextTaskButton(view) {
 }
 
 function drawTaskPanel(view) {
+    if (finishedAll) {
+        return;
+    }
+
     const panelColor =
-        finishedAll
-            ? [0.22, 0.14, 0.02, 1.0]
-            : gameCleared
-                ? [0.20, 0.12, 0.02, 1.0]
-                : COLORS.panel;
+        gameCleared
+            ? [0.20, 0.12, 0.02, 1.0]
+            : COLORS.panel;
 
     drawShape(
         view,
@@ -1980,21 +1987,7 @@ function drawTaskPanel(view) {
         panelColor
     );
 
-    if (finishedAll) {
-        drawCheckMark(
-            view,
-            [
-                TASK_PANEL_CENTER[0],
-                TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + 0.04
-            ],
-            GOAL_CLEAR_COLOR
-        );
-        return;
-    }
-
     if (gameCleared) {
-        // 正解チェックは問題パネル内に表示
         drawCheckMark(
             view,
             [
@@ -2005,7 +1998,6 @@ function drawTaskPanel(view) {
             GOAL_CLEAR_COLOR
         );
 
-        // 「>」は練習問題クリア時だけ表示
         if (
             currentQuestionIndex === 0
         ) {
@@ -2096,9 +2088,11 @@ function drawProgressPanel(view) {
 
 function drawTimerPanel(view) {
     if (
-        currentQuestionIndex === 0 &&
-        !countdownActive &&
-        !finishedAll
+        finishedAll ||
+        (
+            currentQuestionIndex === 0 &&
+            !countdownActive
+        )
     ) {
         return;
     }
@@ -2119,9 +2113,7 @@ function drawTimerPanel(view) {
             0.08,
             0.018
         ),
-        finishedAll
-            ? [0.22, 0.14, 0.02, 1.0]
-            : COLORS.panel
+        COLORS.panel
     );
 
     drawNumberString(
@@ -2132,9 +2124,7 @@ function drawTimerPanel(view) {
             TIMER_PANEL_CENTER[1],
             TIMER_PANEL_CENTER[2] + 0.04
         ],
-        finishedAll
-            ? GOAL_CLEAR_COLOR
-            : COLORS.white,
+        COLORS.white,
         0.70,
         0.073
     );
@@ -2239,9 +2229,9 @@ function drawFinishEffect(view, now) {
                             radius,
                         0.18 +
                             yWave,
-                        -1.08 +
+                        -1.45 +
                             Math.sin(angle) *
-                            0.12
+                            0.10
                     ],
                     0.025,
                     0.025,
@@ -2253,10 +2243,28 @@ function drawFinishEffect(view, now) {
         }
     }
 
-    drawCheckMark(
+    // 目線の高さに「クリア」
+    drawTexturedQuad(
         view,
-        [0.0, 0.12, -1.00],
-        GOAL_CLEAR_COLOR
+        FINAL_CLEAR_CENTER,
+        0.28,
+        0.085,
+        finalClearTexture
+    );
+
+    // その下に最終タイム
+    const timeText =
+        formatTimeSeconds(
+            finalElapsedMs
+        );
+
+    drawNumberString(
+        view,
+        timeText,
+        FINAL_TIME_CENTER,
+        GOAL_CLEAR_COLOR,
+        1.15,
+        0.090
     );
 }
 
@@ -3323,6 +3331,14 @@ function completeAllQuestions(now) {
     finishEffectStartTime = now;
     gameCleared = true;
 
+    selectedBoxIndex = null;
+    isDragging = false;
+    activeInputSource = null;
+    activeBoxIndex = null;
+    isRotating = false;
+    rotationMode = null;
+    rotationInputSource = null;
+
     status.textContent =
         "COMPLETE! 本番5問 合計 " +
         formatTimeSeconds(
@@ -3586,8 +3602,12 @@ function onXRFrame(time, frame) {
         } else {
             drawGoal(view);
             drawObjects(view);
-            drawAddButton(view);
-            drawStandaloneDeleteButton(view);
+
+            if (!finishedAll) {
+                drawAddButton(view);
+                drawStandaloneDeleteButton(view);
+            }
+
             drawTaskPanel(view);
             drawProgressPanel(view);
             drawTimerPanel(view);
@@ -3800,6 +3820,17 @@ xrButton.addEventListener(
                         width: 768,
                         height: 256,
                         fontSize: 92,
+                        color: "#ffffff"
+                    }
+                );
+
+            finalClearTexture =
+                createJapaneseTextTexture(
+                    "クリア",
+                    {
+                        width: 1024,
+                        height: 256,
+                        fontSize: 118,
                         color: "#ffffff"
                     }
                 );
