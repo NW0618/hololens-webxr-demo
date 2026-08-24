@@ -19,12 +19,6 @@ let tutorialLine2Texture = null;
 let tutorialLine3Texture = null;
 let tutorialLine4Texture = null;
 let tutorialLine5Texture = null;
-
-// v47: 起動時1～5はCanvas比率をそのままMR内の表示比率へ反映
-let tutorialLineAspects = [
-    1, 1, 1, 1, 1
-];
-
 let tutorialStartTexture = null;
 let finalClearTexture = null;
 
@@ -110,8 +104,21 @@ let finishEffectStartTime = 0;
 let tutorialActive = true;
 let tutorialCompleted = false;
 
-const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, DISPLAY_Z];
-const TUTORIAL_START_CENTER = [-0.05, -0.54, DISPLAY_Z];
+// v49:
+// チュートリアル文字面を正確に2.00mへ配置し、両眼で表示する。
+// 背景パネルと開始ボタンは厚み分だけ奥へ下げる。
+const TUTORIAL_PANEL_CENTER = [
+    -0.05,
+    0.05,
+    DISPLAY_Z - TUTORIAL_CONTENT_OFFSET
+];
+
+const TUTORIAL_START_CENTER = [
+    -0.05,
+    -0.54,
+    DISPLAY_Z - BUTTON_CONTENT_OFFSET
+];
+
 const TUTORIAL_START_HALF = 0.18;
 
 // 本番1～4問目の自動遷移
@@ -585,79 +592,6 @@ function createJapaneseTextTexture(
     );
 
     return texture;
-}
-
-// ==================================================
-// v47: 「追加」「削除」と同じ128pxフォントを使い、
-// 文字列の実幅に合わせてCanvas幅を決める。
-// MR内でもCanvasの縦横比をそのまま使う。
-// ==================================================
-function createTutorialLineTexture(
-    textValue
-) {
-    const height = 256;
-    const fontSize = 128;
-    const paddingX = 28;
-
-    const measureCanvas =
-        document.createElement(
-            "canvas"
-        );
-
-    const measureCtx =
-        measureCanvas.getContext(
-            "2d"
-        );
-
-    if (!measureCtx) {
-        throw new Error(
-            "Canvas 2D contextを作成できませんでした。"
-        );
-    }
-
-    measureCtx.font =
-        "700 " +
-        fontSize +
-        "px 'Yu Gothic UI', 'Yu Gothic', 'Meiryo', sans-serif";
-
-    const measuredWidth =
-        measureCtx
-            .measureText(
-                textValue
-            )
-            .width;
-
-    // 最長行でもHoloLens 2で扱いやすい範囲に収める
-    const width =
-        Math.max(
-            256,
-            Math.min(
-                3072,
-                Math.ceil(
-                    measuredWidth +
-                    paddingX * 2
-                )
-            )
-        );
-
-    const texture =
-        createJapaneseTextTexture(
-            textValue,
-            {
-                width,
-                height,
-                fontSize,
-                color: "#ffffff",
-                textAlign: "left",
-                paddingX
-            }
-        );
-
-    return {
-        texture,
-        aspect:
-            width / height
-    };
 }
 
 function createTextQuadGeometry() {
@@ -2833,22 +2767,20 @@ function drawTutorialPanel(view) {
         [
             TUTORIAL_PANEL_CENTER[0],
             TUTORIAL_PANEL_CENTER[1] + 0.43,
-            TUTORIAL_PANEL_CENTER[2] + TUTORIAL_CONTENT_OFFSET
+            DISPLAY_Z
         ],
         0.36,
         0.052,
         tutorialTitleTexture
     );
 
-    // v47:
-    // 「追加」「削除」と同じ物理高さ0.12mで表示する。
-    // Canvas比率とMR内Quad比率も一致させる。
+    // 1～5は同じ文字サイズ・同じ表示幅・等間隔で左揃え
     const ys = [
-        0.28,
+        0.27,
         0.14,
-        0.00,
-        -0.14,
-        -0.28
+        0.01,
+        -0.12,
+        -0.25
     ];
 
     const textures = [
@@ -2859,23 +2791,21 @@ function drawTutorialPanel(view) {
         tutorialLine5Texture
     ];
 
-    // 「追加」「削除」と同じ全高0.12m
+    const tutorialLineHalfWidth =
+        0.64;
+
     const tutorialLineHalfHeight =
-        0.060;
+        0.046;
 
     for (let i = 0; i < 5; i++) {
-        const halfWidth =
-            tutorialLineHalfHeight *
-            tutorialLineAspects[i];
-
         drawTexturedQuad(
             view,
             [
                 TUTORIAL_PANEL_CENTER[0],
                 TUTORIAL_PANEL_CENTER[1] + ys[i],
-                TUTORIAL_PANEL_CENTER[2] + TUTORIAL_CONTENT_OFFSET
+                DISPLAY_Z
             ],
-            halfWidth,
+            tutorialLineHalfWidth,
             tutorialLineHalfHeight,
             textures[i]
         );
@@ -2919,7 +2849,7 @@ function drawTutorialPanel(view) {
         [
             TUTORIAL_START_CENTER[0],
             TUTORIAL_START_CENTER[1],
-            TUTORIAL_START_CENTER[2] + BUTTON_CONTENT_OFFSET
+            DISPLAY_Z
         ],
         0.18,
         0.052,
@@ -3892,38 +3822,69 @@ xrButton.addEventListener(
                     }
                 );
 
-            const tutorialLines = [
-                "1. 手を前に出し、光線を図形に合わせる",
-                "2. 親指と人差し指をつまんで選択・移動",
-                "3. 図形を選ぶと色・形・大きさを変更できます",
-                "4. ×で操作画面を閉じます",
-                "5. 追加・削除は下のボタンから操作します"
-            ];
-
-            const tutorialLineResults =
-                tutorialLines.map(
-                    createTutorialLineTexture
+            tutorialLine1Texture =
+                createJapaneseTextTexture(
+                    "1. 手を前に出し、光線を図形に合わせる",
+                    {
+                        width: 1536,
+                        height: 256,
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
+                    }
                 );
 
-            tutorialLine1Texture =
-                tutorialLineResults[0].texture;
-
             tutorialLine2Texture =
-                tutorialLineResults[1].texture;
+                createJapaneseTextTexture(
+                    "2. 親指と人差し指をつまんで選択・移動",
+                    {
+                        width: 1536,
+                        height: 256,
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
+                    }
+                );
 
             tutorialLine3Texture =
-                tutorialLineResults[2].texture;
+                createJapaneseTextTexture(
+                    "3. 図形を選ぶと色・形・大きさを変更できます",
+                    {
+                        width: 1536,
+                        height: 256,
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
+                    }
+                );
 
             tutorialLine4Texture =
-                tutorialLineResults[3].texture;
+                createJapaneseTextTexture(
+                    "4. ×で操作画面を閉じます",
+                    {
+                        width: 1536,
+                        height: 256,
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
+                    }
+                );
 
             tutorialLine5Texture =
-                tutorialLineResults[4].texture;
-
-            tutorialLineAspects =
-                tutorialLineResults.map(
-                    (result) =>
-                        result.aspect
+                createJapaneseTextTexture(
+                    "5. 追加・削除は下のボタンから操作します",
+                    {
+                        width: 1536,
+                        height: 256,
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
+                    }
                 );
 
             tutorialStartTexture =
