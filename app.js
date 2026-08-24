@@ -35,9 +35,12 @@ const BOX_HALF = 0.15;
 // 主要な表示物の基準距離：ユーザーから約2m先
 const DISPLAY_Z = -2.00;
 
-// UIの見えている前面をすべて DISPLAY_Z に揃える。
-// 文字テクスチャだけはZ-fighting回避のため1mm手前。
-const DEPTH_EPSILON = 0.001;
+// UIの見えている前面を DISPLAY_Z に揃える。
+// 透明ブレンドを廃止した文字面は、Z-fighting回避のため8mm手前。
+const DEPTH_EPSILON = 0.008;
+
+// 枠線は背景面と重ならないよう4mm手前へ出す
+const FRAME_SEPARATION = 0.004;
 
 const THIN_PANEL_HALF_DEPTH = 0.018;
 const BUTTON_HALF_DEPTH = 0.025;
@@ -61,7 +64,9 @@ const TUTORIAL_CONTENT_OFFSET =
     TUTORIAL_HALF_DEPTH + DEPTH_EPSILON;
 
 const BUTTON_FRAME_OFFSET =
-    BUTTON_HALF_DEPTH - FRAME_HALF_DEPTH;
+    BUTTON_HALF_DEPTH -
+    FRAME_HALF_DEPTH +
+    FRAME_SEPARATION;
 
 const COLORS = {
     red: [1.0, 0.2, 0.2, 1.0],
@@ -146,7 +151,7 @@ const PROGRESS_PANEL_CENTER = [-0.62, 0.96, DISPLAY_Z - THIN_PANEL_HALF_DEPTH];
 
 // 最終結果表示：目線の高さ
 const FINAL_CLEAR_CENTER = [-0.05, 0.28, DISPLAY_Z + DEPTH_EPSILON];
-const FINAL_TIME_CENTER = [-0.05, 0.02, DISPLAY_Z - DIGIT_HALF_DEPTH];
+const FINAL_TIME_CENTER = [-0.05, 0.02, DISPLAY_Z - DIGIT_HALF_DEPTH + FRAME_SEPARATION];
 
 // ==================================================
 // 初期オブジェクト：1個だけ（約2m先）
@@ -283,11 +288,17 @@ void main() {
             vTexCoord
         );
 
-    if (texColor.a < 0.05) {
+    // 半透明ピクセルを使わず、文字を不透明なカットアウトとして描画。
+    // 左右眼でブレンド結果が変わる要因を減らし、深度も確実に書き込む。
+    if (texColor.a < 0.35) {
         discard;
     }
 
-    gl_FragColor = texColor;
+    gl_FragColor =
+        vec4(
+            texColor.rgb,
+            1.0
+        );
 }
 `;
 
@@ -795,13 +806,18 @@ function drawTexturedQuad(
         0
     );
 
-    gl.enable(
+    // 文字は透明ブレンドを使わず、通常の不透明ジオメトリとして描画。
+    // HoloLensの再投影で使われる深度バッファにも書き込む。
+    gl.disable(
         gl.BLEND
     );
 
-    gl.blendFunc(
-        gl.SRC_ALPHA,
-        gl.ONE_MINUS_SRC_ALPHA
+    gl.enable(
+        gl.DEPTH_TEST
+    );
+
+    gl.depthMask(
+        true
     );
 
     gl.drawElements(
@@ -809,10 +825,6 @@ function drawTexturedQuad(
         6,
         gl.UNSIGNED_SHORT,
         0
-    );
-
-    gl.disable(
-        gl.BLEND
     );
 
     gl.bindTexture(
@@ -1994,7 +2006,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] + 0.025,
-                DISPLAY_Z - 0.018
+                DISPLAY_Z - 0.018 + FRAME_SEPARATION
             ],
             0.050,
             0.010,
@@ -2010,7 +2022,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] - 0.025,
-                DISPLAY_Z - 0.018
+                DISPLAY_Z - 0.018 + FRAME_SEPARATION
             ],
             0.050,
             0.010,
@@ -2048,7 +2060,7 @@ function drawTaskPanel(view) {
             [
                 TASK_PANEL_CENTER[0] - 0.08,
                 TASK_PANEL_CENTER[1],
-                DISPLAY_Z - MARK_HALF_DEPTH
+                DISPLAY_Z - MARK_HALF_DEPTH + FRAME_SEPARATION
             ],
             GOAL_CLEAR_COLOR
         );
@@ -2083,7 +2095,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.015,
             TASK_PANEL_CENTER[1],
-            DISPLAY_Z - MARK_HALF_DEPTH
+            DISPLAY_Z - MARK_HALF_DEPTH + FRAME_SEPARATION
         ],
         COLORS.white
     );
@@ -2093,7 +2105,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.16,
             TASK_PANEL_CENTER[1],
-            DISPLAY_Z - DIGIT_HALF_DEPTH
+            DISPLAY_Z - DIGIT_HALF_DEPTH + FRAME_SEPARATION
         ],
         currentTask.requiredCount,
         COLORS.white,
@@ -2133,7 +2145,7 @@ function drawProgressPanel(view) {
         [
             PROGRESS_PANEL_CENTER[0],
             PROGRESS_PANEL_CENTER[1],
-            DISPLAY_Z - DIGIT_HALF_DEPTH
+            DISPLAY_Z - DIGIT_HALF_DEPTH + FRAME_SEPARATION
         ],
         COLORS.white,
         0.85,
@@ -2177,7 +2189,7 @@ function drawTimerPanel(view) {
         [
             TIMER_PANEL_CENTER[0],
             TIMER_PANEL_CENTER[1],
-            DISPLAY_Z - DIGIT_HALF_DEPTH
+            DISPLAY_Z - DIGIT_HALF_DEPTH + FRAME_SEPARATION
         ],
         COLORS.white,
         0.70,
@@ -2223,7 +2235,7 @@ function drawCountdown(view, now) {
 
     drawSevenSegmentDigit(
         view,
-        [0.0, 0.12, DISPLAY_Z - DIGIT_HALF_DEPTH],
+        [0.0, 0.12, DISPLAY_Z - DIGIT_HALF_DEPTH + FRAME_SEPARATION],
         number,
         COLORS.white,
         2.2
@@ -2523,7 +2535,8 @@ function drawSelectionFrame(view, center, color) {
         center[0],
         center[1],
         DISPLAY_Z -
-        FRAME_HALF_DEPTH
+        FRAME_HALF_DEPTH +
+        FRAME_SEPARATION
     ];
 
     drawFrame(
@@ -2581,7 +2594,8 @@ function drawDeleteButton(view, center) {
 
     const z =
         DISPLAY_Z -
-        CLOSE_MARK_HALF_DEPTH;
+        CLOSE_MARK_HALF_DEPTH +
+        FRAME_SEPARATION;
 
     const xColor =
         isHover
