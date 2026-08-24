@@ -35,11 +35,33 @@ const BOX_HALF = 0.15;
 // 主要な表示物の基準距離：ユーザーから約2m先
 const DISPLAY_Z = -2.00;
 
-// UI背景の前面から3mmだけ手前に文字・記号を配置する
-const DEPTH_EPSILON = 0.003;
-const THIN_PANEL_CONTENT_OFFSET = 0.018 + DEPTH_EPSILON;
-const BUTTON_CONTENT_OFFSET = 0.025 + DEPTH_EPSILON;
-const TUTORIAL_CONTENT_OFFSET = 0.030 + DEPTH_EPSILON;
+// UIの見えている前面をすべて DISPLAY_Z に揃える。
+// 文字テクスチャだけはZ-fighting回避のため1mm手前。
+const DEPTH_EPSILON = 0.001;
+
+const THIN_PANEL_HALF_DEPTH = 0.018;
+const BUTTON_HALF_DEPTH = 0.025;
+const TUTORIAL_HALF_DEPTH = 0.030;
+const FRAME_HALF_DEPTH = 0.010;
+const CONTROL_HALF_DEPTH = 0.025;
+const SHAPE_ICON_HALF_DEPTH = 0.055;
+const TASK_ICON_HALF_DEPTH = 0.060;
+const MARK_HALF_DEPTH = 0.020;
+const DIGIT_HALF_DEPTH = 0.014;
+const CLOSE_BUTTON_HALF_DEPTH = 0.030;
+const CLOSE_MARK_HALF_DEPTH = 0.012;
+
+const THIN_PANEL_CONTENT_OFFSET =
+    THIN_PANEL_HALF_DEPTH + DEPTH_EPSILON;
+
+const BUTTON_CONTENT_OFFSET =
+    BUTTON_HALF_DEPTH + DEPTH_EPSILON;
+
+const TUTORIAL_CONTENT_OFFSET =
+    TUTORIAL_HALF_DEPTH + DEPTH_EPSILON;
+
+const BUTTON_FRAME_OFFSET =
+    BUTTON_HALF_DEPTH - FRAME_HALF_DEPTH;
 
 const COLORS = {
     red: [1.0, 0.2, 0.2, 1.0],
@@ -104,8 +126,8 @@ let finishEffectStartTime = 0;
 let tutorialActive = true;
 let tutorialCompleted = false;
 
-const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, DISPLAY_Z];
-const TUTORIAL_START_CENTER = [-0.05, -0.54, DISPLAY_Z];
+const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, DISPLAY_Z - TUTORIAL_HALF_DEPTH];
+const TUTORIAL_START_CENTER = [-0.05, -0.54, DISPLAY_Z - BUTTON_HALF_DEPTH];
 const TUTORIAL_START_HALF = 0.18;
 
 // 本番1～4問目の自動遷移
@@ -116,15 +138,15 @@ const AUTO_ADVANCE_DELAY_MS = 800;
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
-const NEXT_TASK_CENTER = [-0.05, 0.0, DISPLAY_Z];
+const NEXT_TASK_CENTER = [-0.05, 0.0, DISPLAY_Z - BUTTON_HALF_DEPTH];
 const NEXT_TASK_HALF = 0.14;
 
-const TIMER_PANEL_CENTER = [-0.05, 0.96, DISPLAY_Z];
-const PROGRESS_PANEL_CENTER = [-0.62, 0.96, DISPLAY_Z];
+const TIMER_PANEL_CENTER = [-0.05, 0.96, DISPLAY_Z - THIN_PANEL_HALF_DEPTH];
+const PROGRESS_PANEL_CENTER = [-0.62, 0.96, DISPLAY_Z - THIN_PANEL_HALF_DEPTH];
 
 // 最終結果表示：目線の高さ
-const FINAL_CLEAR_CENTER = [-0.05, 0.28, DISPLAY_Z];
-const FINAL_TIME_CENTER = [-0.05, 0.02, DISPLAY_Z];
+const FINAL_CLEAR_CENTER = [-0.05, 0.28, DISPLAY_Z + DEPTH_EPSILON];
+const FINAL_TIME_CENTER = [-0.05, 0.02, DISPLAY_Z - DIGIT_HALF_DEPTH];
 
 // ==================================================
 // 初期オブジェクト：1個だけ（約2m先）
@@ -159,18 +181,18 @@ const GOAL_DEPTH_TOLERANCE = 0.75;
 // 画面上部から右下側へ移動
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.02, -0.62, DISPLAY_Z];
+const TASK_PANEL_CENTER = [0.02, -0.62, DISPLAY_Z - THIN_PANEL_HALF_DEPTH];
 
 // ==================================================
 // オブジェクト追加ボタン：右下側
 // 追加されたオブジェクトと重ならない位置
 // ==================================================
 
-const ADD_CENTER = [0.72, -0.66, DISPLAY_Z];
+const ADD_CENTER = [0.72, -0.66, DISPLAY_Z - BUTTON_HALF_DEPTH];
 const ADD_HALF = 0.20;
 
 // 「追加」の右側に独立した削除ボタン
-const DELETE_CENTER = [1.32, -0.66, DISPLAY_Z];
+const DELETE_CENTER = [1.32, -0.66, DISPLAY_Z - BUTTON_HALF_DEPTH];
 const DELETE_HALF = 0.20;
 
 // ==================================================
@@ -971,8 +993,22 @@ function getPanelLayout() {
     const objectHalf = BOX_HALF * box.scale;
     const panelX = box.center[0] + objectHalf + 0.50;
     const panelY = box.center[1];
-    // 調整パネルも常に約2m先へ固定する
-    const panelZ = DISPLAY_Z;
+    // 背景パネルの前面をDISPLAY_Zへ揃える
+    const panelZ =
+        DISPLAY_Z -
+        THIN_PANEL_HALF_DEPTH;
+
+    const controlZ =
+        DISPLAY_Z -
+        CONTROL_HALF_DEPTH;
+
+    const shapeIconZ =
+        DISPLAY_Z -
+        SHAPE_ICON_HALF_DEPTH;
+
+    const closeButtonZ =
+        DISPLAY_Z -
+        CLOSE_BUTTON_HALF_DEPTH;
 
     const sizeY = panelY + 0.30;
     const rotateY = panelY + 0.10;
@@ -982,22 +1018,22 @@ function getPanelLayout() {
     return {
         center: [panelX, panelY, panelZ],
 
-        sizeMinus: [panelX - 0.13, sizeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
-        sizePlus: [panelX + 0.13, sizeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        sizeMinus: [panelX - 0.13, sizeY, controlZ],
+        sizePlus: [panelX + 0.13, sizeY, controlZ],
 
-        rotateVertical: [panelX - 0.13, rotateY, panelZ + THIN_PANEL_CONTENT_OFFSET],
-        rotateHorizontal: [panelX + 0.13, rotateY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        rotateVertical: [panelX - 0.13, rotateY, controlZ],
+        rotateHorizontal: [panelX + 0.13, rotateY, controlZ],
 
-        red: [panelX - 0.17, colorY, panelZ + THIN_PANEL_CONTENT_OFFSET],
-        blue: [panelX, colorY, panelZ + THIN_PANEL_CONTENT_OFFSET],
-        green: [panelX + 0.17, colorY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        red: [panelX - 0.17, colorY, controlZ],
+        blue: [panelX, colorY, controlZ],
+        green: [panelX + 0.17, colorY, controlZ],
 
-        cube: [panelX - 0.17, shapeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
-        sphere: [panelX, shapeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
-        tetra: [panelX + 0.17, shapeY, panelZ + THIN_PANEL_CONTENT_OFFSET],
+        cube: [panelX - 0.17, shapeY, shapeIconZ],
+        sphere: [panelX, shapeY, shapeIconZ],
+        tetra: [panelX + 0.17, shapeY, shapeIconZ],
 
-        // 削除ボタン：操作パネル右上
-        deleteButton: [panelX + 0.24, panelY + 0.50, panelZ + 0.051]
+        // 操作パネル右上の閉じるボタン
+        deleteButton: [panelX + 0.24, panelY + 0.50, closeButtonZ]
     };
 }
 
@@ -1958,7 +1994,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] + 0.025,
-                NEXT_TASK_CENTER[2] + BUTTON_CONTENT_OFFSET
+                DISPLAY_Z - 0.018
             ],
             0.050,
             0.010,
@@ -1974,7 +2010,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] - 0.025,
-                NEXT_TASK_CENTER[2] + BUTTON_CONTENT_OFFSET
+                DISPLAY_Z - 0.018
             ],
             0.050,
             0.010,
@@ -2012,7 +2048,7 @@ function drawTaskPanel(view) {
             [
                 TASK_PANEL_CENTER[0] - 0.08,
                 TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
+                DISPLAY_Z - MARK_HALF_DEPTH
             ],
             GOAL_CLEAR_COLOR
         );
@@ -2033,7 +2069,7 @@ function drawTaskPanel(view) {
             [
                 TASK_PANEL_CENTER[0] - 0.15,
                 TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
+                DISPLAY_Z - TASK_ICON_HALF_DEPTH
             ],
             0.060,
             -0.20,
@@ -2047,7 +2083,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.015,
             TASK_PANEL_CENTER[1],
-            TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
+            DISPLAY_Z - MARK_HALF_DEPTH
         ],
         COLORS.white
     );
@@ -2057,7 +2093,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.16,
             TASK_PANEL_CENTER[1],
-            TASK_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
+            DISPLAY_Z - DIGIT_HALF_DEPTH
         ],
         currentTask.requiredCount,
         COLORS.white,
@@ -2097,7 +2133,7 @@ function drawProgressPanel(view) {
         [
             PROGRESS_PANEL_CENTER[0],
             PROGRESS_PANEL_CENTER[1],
-            PROGRESS_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
+            DISPLAY_Z - DIGIT_HALF_DEPTH
         ],
         COLORS.white,
         0.85,
@@ -2141,7 +2177,7 @@ function drawTimerPanel(view) {
         [
             TIMER_PANEL_CENTER[0],
             TIMER_PANEL_CENTER[1],
-            TIMER_PANEL_CENTER[2] + THIN_PANEL_CONTENT_OFFSET
+            DISPLAY_Z - DIGIT_HALF_DEPTH
         ],
         COLORS.white,
         0.70,
@@ -2177,7 +2213,7 @@ function drawCountdown(view, now) {
     drawShape(
         view,
         shapeMatrix(
-            [0.0, 0.12, DISPLAY_Z],
+            [0.0, 0.12, DISPLAY_Z - BUTTON_HALF_DEPTH],
             0.18,
             0.18,
             0.025
@@ -2187,7 +2223,7 @@ function drawCountdown(view, now) {
 
     drawSevenSegmentDigit(
         view,
-        [0.0, 0.12, DISPLAY_Z + BUTTON_CONTENT_OFFSET],
+        [0.0, 0.12, DISPLAY_Z - DIGIT_HALF_DEPTH],
         number,
         COLORS.white,
         2.2
@@ -2483,12 +2519,19 @@ function normalControlColor(type) {
 }
 
 function drawSelectionFrame(view, center, color) {
+    const frameCenter = [
+        center[0],
+        center[1],
+        DISPLAY_Z -
+        FRAME_HALF_DEPTH
+    ];
+
     drawFrame(
         view,
-        center,
+        frameCenter,
         0.070,
         color,
-        0.012
+        0
     );
 }
 
@@ -2537,7 +2580,8 @@ function drawDeleteButton(view, center) {
     );
 
     const z =
-        center[2] + 0.040;
+        DISPLAY_Z -
+        CLOSE_MARK_HALF_DEPTH;
 
     const xColor =
         isHover
@@ -2821,7 +2865,7 @@ function drawTutorialPanel(view) {
         TUTORIAL_START_CENTER,
         0.11,
         frameColor,
-        0.030
+        BUTTON_FRAME_OFFSET
     );
 
     drawTexturedQuad(
@@ -2868,7 +2912,7 @@ function drawAddButton(view) {
         ADD_CENTER,
         0.115,
         frameColor,
-        0.030
+        BUTTON_FRAME_OFFSET
     );
 
     drawTexturedQuad(
@@ -2937,7 +2981,7 @@ function drawStandaloneDeleteButton(view) {
         DELETE_CENTER,
         0.115,
         frameColor,
-        0.030
+        BUTTON_FRAME_OFFSET
     );
 
     if (deleteTextTexture) {
