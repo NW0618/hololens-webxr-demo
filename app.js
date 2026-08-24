@@ -492,6 +492,7 @@ function createJapaneseTextTexture(
     );
 
     ctx.textAlign =
+        options.textAlign ||
         "center";
 
     ctx.textBaseline =
@@ -506,9 +507,17 @@ function createJapaneseTextTexture(
         options.color ||
         "#ffffff";
 
+    const textX =
+        ctx.textAlign === "left"
+            ? (
+                options.paddingX ||
+                64
+            )
+            : width / 2;
+
     ctx.fillText(
         textValue,
-        width / 2,
+        textX,
         height / 2
     );
 
@@ -2745,7 +2754,15 @@ function drawTutorialPanel(view) {
         tutorialTitleTexture
     );
 
-    const ys = [0.27, 0.14, 0.01, -0.12, -0.25];
+    // 1～5は同じ文字サイズ・同じ表示幅・等間隔で左揃え
+    const ys = [
+        0.27,
+        0.14,
+        0.01,
+        -0.12,
+        -0.25
+    ];
+
     const textures = [
         tutorialLine1Texture,
         tutorialLine2Texture,
@@ -2753,7 +2770,12 @@ function drawTutorialPanel(view) {
         tutorialLine4Texture,
         tutorialLine5Texture
     ];
-    const widths = [0.62, 0.62, 0.62, 0.54, 0.62];
+
+    const tutorialLineHalfWidth =
+        0.64;
+
+    const tutorialLineHalfHeight =
+        0.046;
 
     for (let i = 0; i < 5; i++) {
         drawTexturedQuad(
@@ -2763,8 +2785,8 @@ function drawTutorialPanel(view) {
                 TUTORIAL_PANEL_CENTER[1] + ys[i],
                 TUTORIAL_PANEL_CENTER[2] + TUTORIAL_CONTENT_OFFSET
             ],
-            widths[i],
-            0.046,
+            tutorialLineHalfWidth,
+            tutorialLineHalfHeight,
             textures[i]
         );
     }
@@ -3786,8 +3808,10 @@ xrButton.addEventListener(
                     {
                         width: 1536,
                         height: 256,
-                        fontSize: 68,
-                        color: "#ffffff"
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
                     }
                 );
 
@@ -3797,8 +3821,10 @@ xrButton.addEventListener(
                     {
                         width: 1536,
                         height: 256,
-                        fontSize: 66,
-                        color: "#ffffff"
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
                     }
                 );
 
@@ -3808,8 +3834,10 @@ xrButton.addEventListener(
                     {
                         width: 1536,
                         height: 256,
-                        fontSize: 62,
-                        color: "#ffffff"
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
                     }
                 );
 
@@ -3817,10 +3845,12 @@ xrButton.addEventListener(
                 createJapaneseTextTexture(
                     "4. ×で操作画面を閉じます",
                     {
-                        width: 1024,
+                        width: 1536,
                         height: 256,
-                        fontSize: 72,
-                        color: "#ffffff"
+                        fontSize: 64,
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
                     }
                 );
 
@@ -3831,7 +3861,9 @@ xrButton.addEventListener(
                         width: 1536,
                         height: 256,
                         fontSize: 64,
-                        color: "#ffffff"
+                        color: "#ffffff",
+                        textAlign: "left",
+                        paddingX: 72
                     }
                 );
 
