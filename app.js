@@ -95,8 +95,8 @@ let finishEffectStartTime = 0;
 let tutorialActive = true;
 let tutorialCompleted = false;
 
-const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, -1.50];
-const TUTORIAL_START_CENTER = [-0.05, -0.54, -1.45];
+const TUTORIAL_PANEL_CENTER = [-0.05, 0.05, -2.00];
+const TUTORIAL_START_CENTER = [-0.05, -0.54, -2.00];
 const TUTORIAL_START_HALF = 0.18;
 
 // 本番1～4問目の自動遷移
@@ -107,15 +107,15 @@ const AUTO_ADVANCE_DELAY_MS = 800;
 const TOTAL_TIMED_QUESTIONS = 5;
 const COUNTDOWN_MS = 3000;
 
-const NEXT_TASK_CENTER = [-0.05, 0.0, -1.20];
+const NEXT_TASK_CENTER = [-0.05, 0.0, -2.00];
 const NEXT_TASK_HALF = 0.14;
 
-const TIMER_PANEL_CENTER = [-0.05, 0.96, -1.30];
-const PROGRESS_PANEL_CENTER = [-0.62, 0.96, -1.30];
+const TIMER_PANEL_CENTER = [-0.05, 0.96, -2.00];
+const PROGRESS_PANEL_CENTER = [-0.62, 0.96, -2.00];
 
 // 最終結果表示：目線の高さ
-const FINAL_CLEAR_CENTER = [-0.05, 0.28, -1.50];
-const FINAL_TIME_CENTER = [-0.05, 0.02, -1.50];
+const FINAL_CLEAR_CENTER = [-0.05, 0.28, -2.00];
+const FINAL_TIME_CENTER = [-0.05, 0.02, -2.00];
 
 // ==================================================
 // 初期オブジェクト：1個だけ
@@ -150,18 +150,18 @@ const GOAL_DEPTH_TOLERANCE = 0.75;
 // 画面上部から右下側へ移動
 // ==================================================
 
-const TASK_PANEL_CENTER = [0.02, -0.62, -1.32];
+const TASK_PANEL_CENTER = [0.02, -0.62, -2.00];
 
 // ==================================================
 // オブジェクト追加ボタン：右下側
 // 追加されたオブジェクトと重ならない位置
 // ==================================================
 
-const ADD_CENTER = [0.72, -0.66, -1.20];
+const ADD_CENTER = [0.72, -0.66, -2.00];
 const ADD_HALF = 0.20;
 
 // 「追加」の右側に独立した削除ボタン
-const DELETE_CENTER = [1.32, -0.66, -1.20];
+const DELETE_CENTER = [1.32, -0.66, -2.00];
 const DELETE_HALF = 0.20;
 
 // ==================================================
@@ -953,7 +953,7 @@ function getPanelLayout() {
     const objectHalf = BOX_HALF * box.scale;
     const panelX = box.center[0] + objectHalf + 0.50;
     const panelY = box.center[1];
-    const panelZ = box.center[2] + 0.04;
+    const panelZ = box.center[2] + 0.003;
 
     const sizeY = panelY + 0.30;
     const rotateY = panelY + 0.10;
@@ -963,19 +963,19 @@ function getPanelLayout() {
     return {
         center: [panelX, panelY, panelZ],
 
-        sizeMinus: [panelX - 0.13, sizeY, panelZ + 0.04],
-        sizePlus: [panelX + 0.13, sizeY, panelZ + 0.04],
+        sizeMinus: [panelX - 0.13, sizeY, panelZ + 0.003],
+        sizePlus: [panelX + 0.13, sizeY, panelZ + 0.003],
 
-        rotateVertical: [panelX - 0.13, rotateY, panelZ + 0.04],
-        rotateHorizontal: [panelX + 0.13, rotateY, panelZ + 0.04],
+        rotateVertical: [panelX - 0.13, rotateY, panelZ + 0.003],
+        rotateHorizontal: [panelX + 0.13, rotateY, panelZ + 0.003],
 
-        red: [panelX - 0.17, colorY, panelZ + 0.04],
-        blue: [panelX, colorY, panelZ + 0.04],
-        green: [panelX + 0.17, colorY, panelZ + 0.04],
+        red: [panelX - 0.17, colorY, panelZ + 0.003],
+        blue: [panelX, colorY, panelZ + 0.003],
+        green: [panelX + 0.17, colorY, panelZ + 0.003],
 
-        cube: [panelX - 0.17, shapeY, panelZ + 0.04],
-        sphere: [panelX, shapeY, panelZ + 0.04],
-        tetra: [panelX + 0.17, shapeY, panelZ + 0.04],
+        cube: [panelX - 0.17, shapeY, panelZ + 0.003],
+        sphere: [panelX, shapeY, panelZ + 0.003],
+        tetra: [panelX + 0.17, shapeY, panelZ + 0.003],
 
         // 削除ボタン：操作パネル右上
         deleteButton: [panelX + 0.24, panelY + 0.50, panelZ + 0.06]
@@ -1939,7 +1939,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] + 0.025,
-                NEXT_TASK_CENTER[2] + 0.04
+                NEXT_TASK_CENTER[2] + 0.003
             ],
             0.050,
             0.010,
@@ -1955,7 +1955,7 @@ function drawNextTaskButton(view) {
             [
                 NEXT_TASK_CENTER[0] - 0.015,
                 NEXT_TASK_CENTER[1] - 0.025,
-                NEXT_TASK_CENTER[2] + 0.04
+                NEXT_TASK_CENTER[2] + 0.003
             ],
             0.050,
             0.010,
@@ -1993,7 +1993,7 @@ function drawTaskPanel(view) {
             [
                 TASK_PANEL_CENTER[0] - 0.08,
                 TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + 0.04
+                TASK_PANEL_CENTER[2] + 0.003
             ],
             GOAL_CLEAR_COLOR
         );
@@ -2014,7 +2014,7 @@ function drawTaskPanel(view) {
             [
                 TASK_PANEL_CENTER[0] - 0.15,
                 TASK_PANEL_CENTER[1],
-                TASK_PANEL_CENTER[2] + 0.04
+                TASK_PANEL_CENTER[2] + 0.003
             ],
             0.060,
             -0.20,
@@ -2028,7 +2028,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.015,
             TASK_PANEL_CENTER[1],
-            TASK_PANEL_CENTER[2] + 0.04
+            TASK_PANEL_CENTER[2] + 0.003
         ],
         COLORS.white
     );
@@ -2038,7 +2038,7 @@ function drawTaskPanel(view) {
         [
             TASK_PANEL_CENTER[0] + 0.16,
             TASK_PANEL_CENTER[1],
-            TASK_PANEL_CENTER[2] + 0.04
+            TASK_PANEL_CENTER[2] + 0.003
         ],
         currentTask.requiredCount,
         COLORS.white,
@@ -2078,7 +2078,7 @@ function drawProgressPanel(view) {
         [
             PROGRESS_PANEL_CENTER[0],
             PROGRESS_PANEL_CENTER[1],
-            PROGRESS_PANEL_CENTER[2] + 0.04
+            PROGRESS_PANEL_CENTER[2] + 0.003
         ],
         COLORS.white,
         0.85,
@@ -2122,7 +2122,7 @@ function drawTimerPanel(view) {
         [
             TIMER_PANEL_CENTER[0],
             TIMER_PANEL_CENTER[1],
-            TIMER_PANEL_CENTER[2] + 0.04
+            TIMER_PANEL_CENTER[2] + 0.003
         ],
         COLORS.white,
         0.70,
@@ -2158,7 +2158,7 @@ function drawCountdown(view, now) {
     drawShape(
         view,
         shapeMatrix(
-            [0.0, 0.12, -1.05],
+            [0.0, 0.12, -2.00],
             0.18,
             0.18,
             0.025
@@ -2168,7 +2168,7 @@ function drawCountdown(view, now) {
 
     drawSevenSegmentDigit(
         view,
-        [0.0, 0.12, -1.00],
+        [0.0, 0.12, -1.997],
         number,
         COLORS.white,
         2.2
@@ -2229,7 +2229,7 @@ function drawFinishEffect(view, now) {
                             radius,
                         0.18 +
                             yWave,
-                        -1.45 +
+                        -1.95 +
                             Math.sin(angle) *
                             0.10
                     ],
@@ -2518,7 +2518,7 @@ function drawDeleteButton(view, center) {
     );
 
     const z =
-        center[2] + 0.040;
+        center[2] + 0.0030;
 
     const xColor =
         isHover
@@ -2728,7 +2728,7 @@ function drawTutorialPanel(view) {
         [
             TUTORIAL_PANEL_CENTER[0],
             TUTORIAL_PANEL_CENTER[1] + 0.43,
-            TUTORIAL_PANEL_CENTER[2] + 0.070
+            TUTORIAL_PANEL_CENTER[2] + 0.003
         ],
         0.36,
         0.052,
@@ -2751,7 +2751,7 @@ function drawTutorialPanel(view) {
             [
                 TUTORIAL_PANEL_CENTER[0],
                 TUTORIAL_PANEL_CENTER[1] + ys[i],
-                TUTORIAL_PANEL_CENTER[2] + 0.070
+                TUTORIAL_PANEL_CENTER[2] + 0.003
             ],
             widths[i],
             0.046,
@@ -2797,7 +2797,7 @@ function drawTutorialPanel(view) {
         [
             TUTORIAL_START_CENTER[0],
             TUTORIAL_START_CENTER[1],
-            TUTORIAL_START_CENTER[2] + 0.060
+            TUTORIAL_START_CENTER[2] + 0.003
         ],
         0.18,
         0.052,
@@ -2844,7 +2844,7 @@ function drawAddButton(view) {
         [
             ADD_CENTER[0],
             ADD_CENTER[1],
-            ADD_CENTER[2] + 0.060
+            ADD_CENTER[2] + 0.003
         ],
         0.145,
         0.060,
@@ -2914,7 +2914,7 @@ function drawStandaloneDeleteButton(view) {
             [
                 DELETE_CENTER[0],
                 DELETE_CENTER[1],
-                DELETE_CENTER[2] + 0.060
+                DELETE_CENTER[2] + 0.003
             ],
             0.145,
             0.060,
